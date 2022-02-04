@@ -1,0 +1,159 @@
+RigNotes:
+
+Alpha (aircraft):
+Max = 18
+Min = -15
+
+Prop spinning at 12.5
+
+x+ -> Towards left wing
+y+ -> Towards rear of aircraft
+z+ -> Towards top of aircraft
+
+   \D
+    \
+     \
+   a (\
+____(__\
+Y     /|
+     /U|
+    / a|
+   /   |
+ L/    |Z
+ 
+ 
+10m/s       0,
+12.5m/s -5, 0, 5
+
+10m/s 15, 12.5, 10, 7.5, 5, 2.5, 0, -2.5, -5, -7.5, -10
+
+12.5m/s "
+
+15m/s "
+
+17.5m/s
+
+Later
+Fine control surface data 2 readings:
+Aileron 2, 4
+Elevator 2, 4, 6
+Rudder 2.5, 5
+
+Later later
+16V throttle curves
+
+Later later later
+Symmetric flap
+High alpha in return section?
+
+A/S  Alpha
+10   2.5
+10   -2.5
+10   5
+10   -5
+10   7.5
+10   -7.5
+10   10
+10   -10
+10   12.5
+10   15
+
+12.5 2.5
+12.5 -2.5
+12.5 7.5
+12.5 -7.5
+12.5 10
+12.5 12.5
+12.5 -10
+12.5 15
+
+15   0
+15   2.5
+15   -2.5
+15   7.5
+15   -7.5
+15   10
+15   -10
+15   12.5
+15   15
+
+17.5 0
+17.5 2.5
+17.5 -2.5
+17.5 5      20.8dC
+17.5 -5
+17.5 7.5    
+17.5 -7.5   21.4dC
+17.5 10
+17.5 -10
+17.5 12.5   (Stall ~ 13.8)
+17.5 14
+
+20   0     Ail 15 Ele 30 Rud 30
+20   2.5
+20   -2.5
+
+Pizza Break
+
+20   5
+20   -5
+20   7.5
+20   -7.5
+20   10
+20   -10
+20   12.5
+
+22.5 0     Ail 10 Ele 25 Rud 25
+22.5 2.5
+22.5 -2.5
+22.5 5    22.8dC
+22.5 -5
+
+Tare 2
+
+Day 2
+
+Throttle tests
+
+10  0 np
+10  2.5 np
+10  -2.5 np
+10  5 np
+10  -5 np
+10  7.5 np
+10  -7.5 np
+10  10 np
+10  -10 np
+10  12.5 np
+10  -12.5 np
+10  15 np
+
+Tare
+
+15  0 np
+15  2.5 np
+15  -2.5 np
+15  5 np
+15  -5 np
+15  7.5 np
+15  -7.5 np
+15  10 np
+15  -10 np
+15  12.5 np
+15  -12.5 np
+15  15 np
+15  -15 np
+
+10  -15 np
+
+20  0 np
+20  2.5 np
+20  -2.5 np
+20  5 np
+20  -5 np
+20  7.5 np
+20  -7.5 np
+20  10 np
+20  -10 np
+20  12.5 np
+20  -12.5 np
