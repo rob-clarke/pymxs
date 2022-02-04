@@ -3,11 +3,6 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from . import tares, controls
-
-from .clean import transform_data, calc_lift_drag, shift_data
-from .controls import calc_controls
-
 def get_rigpitch(filename):
     rigpitch_str = (filename.split('_')[-1])[:-4]
     negative = False
@@ -37,6 +32,11 @@ def load_dir(dirpath,add_rigpitch=True):
     files = os.listdir(dirpath)
     dfs = map(lambda f: load_file(dirpath,f),files)
     return pd.concat(dfs)
+
+from . import tares, controls
+
+from .clean import transform_data, calc_lift_drag, shift_data
+from .controls import calc_controls
 
 def process_dir(dirpath,tare):
     raw_data = load_dir(dirpath)

@@ -6,7 +6,7 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 
-import utils
+from . import utils
 
 chord = 0.23
 
@@ -28,7 +28,7 @@ sources = [
 
 data = None
 for filename,airspeed in sources:
-    newdata = pickle.load(open(filename,"rb"))
+    newdata = pickle.load(open("./wind_tunnel_data/processed/"+filename,"rb"))
     add_airspeed_column(newdata,airspeed)
     data = pd.concat([data,newdata])
 
