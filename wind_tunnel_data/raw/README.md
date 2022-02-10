@@ -26,9 +26,31 @@ def pwm_to_angle(pwm, polynomial):
     return round(angle*100)/100
 ```
 
-Aileron1 (Right)
+Aileron1 = Right / Starboard
 
-Aileron2 (Left)
+Aileron2 = Left / Port
+
+## Axes
+
+As mounted in aircraft, load cell convention is:
+- x+ -> Towards left wing
+- y+ -> Towards rear of aircraft
+- z+ -> Towards top of aircraft
+- l+ -> Nose down
+- m+ -> Left wing down
+- n+ -> Nose left
+
+Standard convention is:
+- x+ -> Towards nose
+- y+ -> Towards right wing
+- z+ -> Towards bottom of aircraft
+- l+ -> Right wing down
+- m+ -> Nose up
+- n+ -> Nose right
+
+The aircraft was mounted inverted in the wind tunnel, as such the pitch in the raw data is inverted.
+
+Estimated aerodynamic centre is 0.015 m forward and 0.023 m up from the load cell reference point.
 
 ## 2021-11-03 & 2021-11-04
 

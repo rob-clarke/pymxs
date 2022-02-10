@@ -83,54 +83,58 @@ def calculate_C_M(neutral_data):
     
     return c_ms,C_M,C_M_complex
 
+def make_plot(ax,xs,ys,samples1,fit1,samples2,fit2,xlabel,ylabel,grid=True):
+    ax.scatter(xs,ys)
+    ax.plot(samples1,fit1(samples1),c="red")
+    if fit2 is not None:
+        ax.plot(samples2,fit2(samples2),c="green")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.grid(grid,'both')
+
 def make_top3_plots(neutral_data,c_lifts,C_lift,C_lift_complex,c_ds,C_drag,C_drag_complex,c_ms,C_M,C_M_complex):
     # Make plots
-    fig,axs = plt.subplots(1,3)
+    #fig,axs = plt.subplots(1,3)
 
     # Plot lift
-    axs[0].scatter(neutral_data.pitch,c_lifts)
-
-    fit_samples = np.linspace(-15,15)
-    fitted = linear(np.radians(fit_samples),C_lift["alpha"],C_lift["zero"])
-    axs[0].plot(fit_samples,fitted,c="red")
-
-    fit_samples = np.linspace(-30,30,200)
-    fitted = c_l_curve(np.radians(fit_samples),*C_lift_complex)
-    axs[0].plot(fit_samples,fitted,c="green")
-
-    axs[0].set_xlabel("Pitch angle (deg)")
-    axs[0].set_ylabel("C_L")
+    fig = plt.figure()
+    ax = plt.axes()
+    make_plot(ax,
+        neutral_data.pitch,c_lifts,
+        np.linspace(-15,15),
+        lambda x: linear(np.radians(x),C_lift["alpha"],C_lift["zero"]),
+        np.linspace(-30,30,200),
+        lambda x: c_l_curve(np.radians(x),*C_lift_complex),
+        "Pitch angle (deg)",
+        "C_L"
+        )
 
     # Plot drag
-    axs[1].scatter(neutral_data.pitch,c_ds)
-
-    fit_samples = np.linspace(-15,15)
-    fitted = quadratic(np.radians(fit_samples),C_drag["alpha2"],C_drag["alpha"],C_drag["zero"])
-    axs[1].plot(fit_samples,fitted,c="red")
-
-    fit_samples = np.linspace(-30,30,200)
-    fitted = c_d_curve(np.radians(fit_samples),*C_drag_complex)
-    axs[1].plot(fit_samples,fitted,c="green")
-
-    axs[1].set_xlabel("Pitch angle (deg)")
-    axs[1].set_ylabel("C_D")
+    fig = plt.figure()
+    ax = plt.axes()
+    make_plot(ax,
+        neutral_data.pitch,c_ds,
+        np.linspace(-15,15),
+        lambda x: quadratic(np.radians(x),C_drag["alpha2"],C_drag["alpha"],C_drag["zero"]),
+        np.linspace(-30,30,200),
+        lambda x: c_d_curve(np.radians(x),*C_drag_complex),
+        "Pitch angle (deg)",
+        "C_D"
+        )
 
     # Plot C_M
-    axs[2].scatter(neutral_data.pitch,c_ms)
+    fig = plt.figure()
+    ax = plt.axes()
+    make_plot(ax,
+        neutral_data.pitch,c_ms,
+        np.linspace(-15,15),
+        lambda x: linear(np.radians(x),C_M["alpha"],C_M["zero"]),
+        np.linspace(-30,30,200),
+        lambda x: c_m_curve(np.radians(x),*C_M_complex),
+        "Pitch angle (deg)",
+        "C_M"
+        )
 
-    fit_samples = np.linspace(-15,15)
-    fitted = linear(np.radians(fit_samples),C_M["alpha"],C_M["zero"])
-    axs[2].plot(fit_samples,fitted,c="red")
-
-    fit_samples = np.linspace(-30,30,200)
-    fitted = c_m_curve(np.radians(fit_samples),*C_M_complex)
-    axs[2].plot(fit_samples,fitted,c="green")
-
-    axs[2].set_xlabel("Pitch angle (deg)")
-    axs[2].set_ylabel("C_M")
-
-    for ax in axs:
-        ax.grid(True,'both')
 
 
 def calculate_C_M_elev(elevdata,C_M):
@@ -403,26 +407,27 @@ def calculate_plot_throttle(data,C_lift_complex,C_drag_complex):
     expected_load_x = -drag * np.cos(np.radians(thrdata.pitch)) + lift * np.sin(np.radians(thrdata.pitch))
     thrust = thrdata.load_x - expected_load_x
 
-    fig, axs = plt.subplots(1,2)
-    d = axs[0].scatter(thrdata.pitch,thrust,c=thrdata.airspeed)
-    axs[0].set_xlabel("Pitch angle (deg)")
-    axs[0].set_ylabel("Thrust (N)")
-    cbar = fig.colorbar(d,ax=axs[0])
+    fig = plt.figure()
+    d = plt.scatter(thrdata.pitch,thrust,c=thrdata.airspeed)
+    ax = fig.axes[0]
+    ax.set_xlabel("Pitch angle (deg)")
+    ax.set_ylabel("Thrust (N)")
+    cbar = fig.colorbar(d,ax=ax)
     cbar.set_label("Airspeed (m/s)")
 
-    rho = 1.225
-    D = 0.28
-    n = thrdata.rpm / 60.0
+    # rho = 1.225
+    # D = 0.28
+    # n = thrdata.rpm / 60.0
 
-    k_t = thrust / (rho * n**2 * D**4)
+    # k_t = thrust / (rho * n**2 * D**4)
 
-    k_t_select = (thrust > 1.0) & (thrdata.rpm > 100)
+    # k_t_select = (thrust > 1.0) & (thrdata.rpm > 100)
 
-    d = axs[1].scatter(thrdata[k_t_select].pitch,k_t[k_t_select],c=thrdata[k_t_select].throttle)
-    axs[1].set_xlabel("Pitch angle (deg)")
-    axs[1].set_ylabel("Thrust coefficient")
-    cbar = fig.colorbar(d,ax=axs[1])
-    cbar.set_label("Throttle setting")
+    # d = axs[1].scatter(thrdata[k_t_select].pitch,k_t[k_t_select],c=thrdata[k_t_select].throttle)
+    # axs[1].set_xlabel("Pitch angle (deg)")
+    # axs[1].set_ylabel("Thrust coefficient")
+    # cbar = fig.colorbar(d,ax=axs[1])
+    # cbar.set_label("Throttle setting")
 
 # import yaml
 # print(yaml.dump({
@@ -433,7 +438,7 @@ def calculate_plot_throttle(data,C_lift_complex,C_drag_complex):
 #     "C_N": C_N,
 #     }))
 
-plt.show()
+# plt.show()
 
 if __name__ != "__main__":
     import os
