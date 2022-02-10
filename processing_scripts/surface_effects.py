@@ -1,3 +1,4 @@
+from cmath import inf
 import pickle
 import matplotlib
 import numpy as np
@@ -8,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from . import utils
 
-from .utils.fits import linear, quadratic, tanh, H, S
+from .utils.fits import linear, quadratic, tanh, H, S, P, Fit
 
 chord = 0.23
 
@@ -392,6 +393,7 @@ def calculate_plot_throttle(data,C_lift_complex,C_drag_complex):
             & (data.throttle > 0.1)
             & (abs(data.elevator)<2.0)
             & (abs(data.rudder)<2.0)
+            & (abs(data.pitch)<2.0)
             ]
 
     # c_lift = linear(np.radians(thrdata.pitch),C_lift["alpha"],C_lift["zero"])
@@ -407,13 +409,153 @@ def calculate_plot_throttle(data,C_lift_complex,C_drag_complex):
     expected_load_x = -drag * np.cos(np.radians(thrdata.pitch)) + lift * np.sin(np.radians(thrdata.pitch))
     thrust = thrdata.load_x - expected_load_x
 
+    # # Add artificial zeros
+    # print(f"Lengths before: {len(thrdata.index)}, {len(thrust)}")
+    # example_row = thrdata.iloc[0]
+    # for airspeed in np.linspace(10,25):
+    #     example_row.throttle = 0
+    #     example_row.airspeed = airspeed
+    #     thrdata = thrdata.append(example_row,ignore_index=True)
+    #     thrust = np.append(thrust,[0])
+
+    # print(f"Lengths after: {len(thrdata.index)}, {len(thrust)}")
+    
     fig = plt.figure()
-    d = plt.scatter(thrdata.pitch,thrust,c=thrdata.airspeed)
+    ax = fig.add_subplot(projection='3d')
+    d = ax.scatter(thrdata.throttle,thrdata.airspeed,thrust)
+    # ax = fig.axes[0]
+    ax.set_xlabel("Throttle")
+    ax.set_ylabel("Airspeed (m/s)")
+    ax.set_zlabel("Thrust (N)")
+    # cbar = fig.colorbar(d,ax=ax)
+    # cbar.set_label("Input power")
+
+
+    def thrust_surf(thr,aspd,*args):
+        # if len(args) % 4 != 0:
+        #     raise ValueError("length of args must be divisible by 3")
+        # poly_order_p1 = len(args) // 3
+        # a = P(thr,*args[0*poly_order_p1:1*poly_order_p1])
+        # b = P(thr,*args[1*poly_order_p1:2*poly_order_p1])
+        # c = P(thr,*args[2*poly_order_p1:3*poly_order_p1])
+        # return quadratic(aspd,a,b,c)
+        x = thr
+        y = aspd
+        z = args[0]*x**2 + args[1]*y**2 + args[2]*x*y + args[3]*x + args[4]*y + args[5]
+        return z
+
+    def surface_least_sq(params,data,target_data):
+        estimated_data = thrust_surf(data.throttle,data.airspeed,*params)
+        
+        return np.linalg.norm(estimated_data - target_data)
+
+    # import itertools
+    # a0 = [1.0,1.0,1.0,1.0]
+    # b0 = [10.0,10.0,10.0,10.0]
+    # c0 = b0
+    # x0 = list(itertools.chain(*zip(c0,b0)))
+    x0 = [1.0]*6
+    
+    bounds = [(-np.inf,np.inf)]*len(x0)
+    # Set lower bound on tanh horizontal stretch
+    #bounds[3] = (0.3,np.inf)
+    
+    res = scipy.optimize.minimize(surface_least_sq,x0,args=(thrdata,thrust),method='Nelder-Mead',options={"maxiter":100000},bounds=bounds)
+    #print(res)
+    
+    thrust_model = Fit(thrust_surf,res.x)
+
+    throttle_samples = np.linspace(0,0.8)
+    airspeed_samples = np.linspace(10,25)
+    T,A = np.meshgrid(throttle_samples,airspeed_samples)
+    
+    fitted_thrust = np.array(thrust_model(np.ravel(T),np.ravel(A)))
+    TF = fitted_thrust.reshape(A.shape)
+    
+    ax.plot_surface(T,A,TF)
+    
+    print(f"a = {res.x}")
+    
+    # fig = plt.figure()
+    # d = plt.scatter(thrdata.pitch,thrust,c=thrdata.airspeed)
+    # ax = fig.axes[0]
+    # ax.set_xlabel("Pitch angle (deg)")
+    # ax.set_ylabel("Thrust (N)")
+    # cbar = fig.colorbar(d,ax=ax)
+    # cbar.set_label("Airspeed (m/s)")
+    
+    fig = plt.figure()
+    d = plt.scatter(thrdata.throttle,thrdata.rpm/60,c=thrdata.airspeed)
     ax = fig.axes[0]
-    ax.set_xlabel("Pitch angle (deg)")
+    ax.set_xlabel("Throttle")
+    ax.set_ylabel("Rev/s")
+    cbar = fig.colorbar(d,ax=ax)
+    cbar.set_label("Airspeed")
+    
+    throttles = [0.2,0.35,0.5,0.65,0.8]
+    
+    fig = plt.figure()
+    d = plt.scatter(thrdata.airspeed,thrust,c=thrdata.throttle)
+    ax = fig.axes[0]
+    ax.set_xlabel("Airspeed (m/s)")
+    ax.set_ylabel("Thrust (N)")
+    for t in throttles:
+        plt.plot(airspeed_samples,thrust_model(t,airspeed_samples))
+    cbar = fig.colorbar(d,ax=ax)
+    cbar.set_label("Throttle")
+
+    fig = plt.figure()
+    advance_ratio = thrdata.airspeed / ((thrdata.rpm/60)*utils.prop_rad*2)
+    d = plt.scatter(advance_ratio,thrust,c=thrdata.throttle)
+    for t in throttles:
+        plt.plot(airspeed_samples / ((100*t+100)*utils.prop_rad*2),thrust_model(t,airspeed_samples))
+    ax = fig.axes[0]
+    ax.set_xlabel("Advance ratio")
     ax.set_ylabel("Thrust (N)")
     cbar = fig.colorbar(d,ax=ax)
-    cbar.set_label("Airspeed (m/s)")
+    cbar.set_label("Throttle")
+
+    # fig = plt.figure()
+    # prop_power = thrust * thrdata.airspeed
+    # elec_power = thrdata.current*thrdata.voltage
+    # d = plt.scatter(advance_ratio,prop_power,c=thrdata.throttle)
+    # d = plt.scatter(advance_ratio,elec_power,marker="+",c="grey")
+    # ax = fig.axes[0]
+    # ax.set_xlabel("Advance ratio")
+    # ax.set_ylabel("Power (W)")
+    # ax.legend(("Propeller power", "Electrical power"))
+    # cbar = fig.colorbar(d,ax=ax)
+    # cbar.set_label("Throttle")
+
+    # fig = plt.figure()
+    # d = plt.scatter(advance_ratio,prop_power/elec_power,c=thrdata.throttle)
+    # ax = fig.axes[0]
+    # ax.set_xlabel("Advance ratio")
+    # ax.set_ylabel("Prop efficiency")
+    # cbar = fig.colorbar(d,ax=ax)
+    # cbar.set_label("Throttle")
+    # # plt.axis([0, 0.55, 0, 1])
+
+    # fig = plt.figure()
+    # d = plt.scatter(thrdata.rpm/60,thrust,c=thrdata.airspeed)
+    # ax = fig.axes[0]
+    # ax.set_xlabel("Rev/s")
+    # ax.set_ylabel("Thrust")
+    # cbar = fig.colorbar(d,ax=ax)
+    # cbar.set_label("Input power")
+
+
+    # fig = plt.figure()
+    # ax = plt.axes()
+    # make_plot(ax,
+    #     thrdata.rpm/60,thrust,
+    #     np.linspace(100,200),
+    #     lambda x: np.zeros(x.size),
+    #     None,
+    #     None,
+    #     "Rev/s",
+    #     "Thrust")
+        
 
     # rho = 1.225
     # D = 0.28
@@ -440,7 +582,7 @@ def calculate_plot_throttle(data,C_lift_complex,C_drag_complex):
 
 # plt.show()
 
-if __name__ != "__main__":
+if __name__ == "__main__":
     import os
     thisfiledir = os.path.dirname(os.path.abspath(__file__))
     
@@ -492,4 +634,7 @@ if __name__ != "__main__":
         & (abs(data.aileron)<2.0)
         & (abs(data.elevator)<2.0)
         ]
+    
+    calculate_plot_throttle(data,C_lift_complex,C_drag_complex)
+    plt.show()
     
