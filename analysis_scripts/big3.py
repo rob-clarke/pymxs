@@ -5,7 +5,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, currentdir)
 sys.path.insert(0, parentdir)
 
-from common import load_data
+from common import load_data, make_plot
 
 from processing_scripts import utils
 
@@ -84,15 +84,6 @@ def calculate_C_M(neutral_data):
     C_M_complex = popt
     
     return c_ms,C_M,C_M_complex
-
-def make_plot(ax,xs,ys,samples1,fit1,samples2,fit2,xlabel,ylabel,grid=True):
-    ax.scatter(xs,ys)
-    ax.plot(samples1,fit1(samples1),c="red")
-    if fit2 is not None:
-        ax.plot(samples2,fit2(samples2),c="green")
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.grid(grid,'both')
 
 def make_top3_plots(neutral_data,c_lifts,C_lift,C_lift_complex,c_ds,C_drag,C_drag_complex,c_ms,C_M,C_M_complex):
     # Make plots

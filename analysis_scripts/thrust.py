@@ -8,6 +8,7 @@ sys.path.insert(0, parentdir)
 import numpy as np
 import scipy
 
+import matplotlib
 import matplotlib.pyplot as plt
 
 from processing_scripts import utils
@@ -104,6 +105,8 @@ def calculate_plot_throttle(data,c_lift_fit,c_drag_fit):
     
     print(f"a = {res.x}")
     
+    cmap = plt.get_cmap('viridis')
+    
     # fig = plt.figure()
     # d = plt.scatter(thrdata.pitch,thrust,c=thrdata.airspeed)
     # ax = fig.axes[0]
@@ -112,8 +115,9 @@ def calculate_plot_throttle(data,c_lift_fit,c_drag_fit):
     # cbar = fig.colorbar(d,ax=ax)
     # cbar.set_label("Airspeed (m/s)")
     
+    cnorm = matplotlib.colors.Normalize(10.0,22.5)
     fig = plt.figure()
-    d = plt.scatter(thrdata.throttle,thrdata.rpm/60,c=thrdata.airspeed)
+    d = plt.scatter(thrdata.throttle,thrdata.rpm/60,c=cmap(cnorm(thrdata.airspeed)))
     ax = fig.axes[0]
     ax.set_xlabel("Throttle")
     ax.set_ylabel("Rev/s")
@@ -122,26 +126,27 @@ def calculate_plot_throttle(data,c_lift_fit,c_drag_fit):
     
     throttles = [0.2,0.35,0.5,0.65,0.8]
     
+    cnorm = matplotlib.colors.Normalize(0.0,0.8)
     fig = plt.figure()
-    d = plt.scatter(thrdata.airspeed,thrust,c=thrdata.throttle)
+    d = plt.scatter(thrdata.airspeed,thrust,c=thrdata.throttle,norm=cnorm)
     ax = fig.axes[0]
     ax.set_xlabel("Airspeed (m/s)")
     ax.set_ylabel("Thrust (N)")
     for t in throttles:
-        plt.plot(airspeed_samples,thrust_model(t,airspeed_samples))
+        plt.plot(airspeed_samples,thrust_model(t,airspeed_samples),c=cmap(cnorm(t)))
     cbar = fig.colorbar(d,ax=ax)
     cbar.set_label("Throttle")
 
-    fig = plt.figure()
-    advance_ratio = thrdata.airspeed / ((thrdata.rpm/60)*utils.prop_rad*2)
-    d = plt.scatter(advance_ratio,thrust,c=thrdata.throttle)
-    for t in throttles:
-        plt.plot(airspeed_samples / ((100*t+100)*utils.prop_rad*2),thrust_model(t,airspeed_samples))
-    ax = fig.axes[0]
-    ax.set_xlabel("Advance ratio")
-    ax.set_ylabel("Thrust (N)")
-    cbar = fig.colorbar(d,ax=ax)
-    cbar.set_label("Throttle")
+    # fig = plt.figure()
+    # advance_ratio = thrdata.airspeed / ((thrdata.rpm/60)*utils.prop_rad*2)
+    # d = plt.scatter(advance_ratio,thrust,c=thrdata.throttle)
+    # for t in throttles:
+    #     plt.plot(airspeed_samples / ((100*t+100)*utils.prop_rad*2),thrust_model(t,airspeed_samples))
+    # ax = fig.axes[0]
+    # ax.set_xlabel("Advance ratio")
+    # ax.set_ylabel("Thrust (N)")
+    # cbar = fig.colorbar(d,ax=ax)
+    # cbar.set_label("Throttle")
 
     # fig = plt.figure()
     # prop_power = thrust * thrdata.airspeed

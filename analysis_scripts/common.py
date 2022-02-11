@@ -31,3 +31,12 @@ def load_data():
         data = pd.concat([data,newdata])
     
     return data
+
+def make_plot(ax,xs,ys,samples1,fit1,samples2,fit2,xlabel,ylabel,grid=True):
+    ax.scatter(xs,ys)
+    ax.plot(samples1,fit1(samples1),c="red")
+    if fit2 is not None:
+        ax.plot(samples2,fit2(samples2),c="green")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.grid(grid,'both')
