@@ -1,14 +1,17 @@
-import common
+# Do some nonsense to make imports work...
+import inspect, os, sys
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, currentdir)
+sys.path.insert(0, parentdir)
 
-import pickle
 import numpy as np
 import scipy
-import pandas as pd
 
 import matplotlib.pyplot as plt
 
 from processing_scripts import utils
-from processing_scripts.utils.fits import Fit
+from processing_scripts.utils.fits import Fit, poly_surface
 
 def calculate_thrust(data,C_lift_fit,C_drag_fit):
     c_lift = C_lift_fit(np.radians(data.pitch))
@@ -36,24 +39,28 @@ def add_zeros(data,thrust):
     return data, thrust    
 
 def thrust_model_surf(thr,aspd,*args):
-        x = thr
-        y = aspd
+        # x = thr
+        # y = aspd
         
-        z = args[0]*x**2 + args[1]*y**2 + args[2]*x*y + args[3]*x + args[4]*y + args[5]
+        # z = args[0]*x**2 + args[1]*x*y + args[2]*y**2 + args[3]*x + args[4]*y + args[5]
         
-        return z
+        # #return np.maximum(z,0.0)
+        # return z
+        return poly_surface(thr,aspd,2,*args)
 
 def calculate_plot_throttle(data,c_lift_fit,c_drag_fit):
     # Calculate C_T
     thrdata = data[
             (abs(data.aileron)<2.0)
-            & (data.throttle > 0.1)
+            & (data.throttle > 0.2)
             & (abs(data.elevator)<2.0)
             & (abs(data.rudder)<2.0)
             & (abs(data.pitch)<2.0)
             ]
 
     thrust = calculate_thrust(thrdata, c_lift_fit, c_drag_fit)
+
+    #thrdata,thrust = add_zeros(thrdata,thrust)
     
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
@@ -204,30 +211,12 @@ def calculate_plot_throttle(data,c_lift_fit,c_drag_fit):
 # plt.show()
 
 if __name__ == "__main__":
-    import os
-    thisfiledir = os.path.dirname(os.path.abspath(__file__))
-    
-    sources = [
-        ("data_17_10.pkl",10),
-        ("data_17_12.5.pkl",12.5),
-        ("data_17_15.pkl",15),
-        ("data_17_17.5.pkl",17.5),
-        ("data_17_20.pkl",20),
-        ("data_17_22.5.pkl",22.5),
-        ("data_18_10.pkl",10),
-        ("data_18_15.pkl",15),
-        ("data_18_20.pkl",20)
-        ]
-
-    data = None
-    
-    for filename,airspeed in sources:
-        newdata = pickle.load(open(thisfiledir+"/../wind_tunnel_data/processed/"+filename,"rb"))
-        utils.augment_with_airspeed(newdata,airspeed)
-        data = pd.concat([data,newdata])
-    
+    from common import load_data
     from big3 import get_big3_fits
+    
     c_lift_fit,c_drag_fit,_ = get_big3_fits()
+    
+    data = load_data()
     
     calculate_plot_throttle(data,c_lift_fit,c_drag_fit)
     plt.show()

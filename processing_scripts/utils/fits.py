@@ -25,6 +25,29 @@ def P(x,*args):
         result += coef*pow(x,i)
     return result
 
+def poly_surface(x,y,order,*args):
+    # 0 -> c
+    #   1  (0,0)
+    # 1 -> x y c
+    #   3  (1,0) (0,1) (0,0)
+    # 2 -> xx xy yy x y c
+    #   6  (2,0) (1,1) (0,2) (1,0) (0,1) (0,0)
+    # 3 -> xxx xxy xyy yyy xx xy yy x y c
+    #   10
+    # 4 -> xxxx xxxy xxyy xyyy yyyy xxx xxy xyy yyy xx xy yy x y c
+    #   15 <- Triangle numbers!
+    argindex = 0
+    result = 0.0
+    for i in range(order+1)[::-1]:
+        xpow = i
+        ypow = 0
+        while xpow >= 0:
+            result += args[argindex] * np.power(x,xpow) * np.power(y,ypow)
+            ypow += 1
+            xpow -= 1
+            argindex += 1
+    return result
+
 class Fit:
     def __init__(self,fn,args):
         self.fn = fn

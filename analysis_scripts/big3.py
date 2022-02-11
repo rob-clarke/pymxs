@@ -1,16 +1,20 @@
-import common
+# Do some nonsense to make imports work...
+import inspect, os, sys
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, currentdir)
+sys.path.insert(0, parentdir)
+
+from common import load_data
 
 from processing_scripts import utils
 
-from processing_scripts.utils.fits import linear, quadratic, tanh, H, S, P, Fit
+from processing_scripts.utils.fits import linear, quadratic, H, S, Fit
 
 import os
 
-import pickle
-import matplotlib
 import numpy as np
 import scipy
-import pandas as pd
 
 import matplotlib.pyplot as plt
 
@@ -133,30 +137,6 @@ def make_top3_plots(neutral_data,c_lifts,C_lift,C_lift_complex,c_ds,C_drag,C_dra
         "C_M"
         )
 
-def load_data():
-    thisfiledir = os.path.dirname(os.path.abspath(__file__))
-    
-    sources = [
-        ("data_17_10.pkl",10),
-        ("data_17_12.5.pkl",12.5),
-        ("data_17_15.pkl",15),
-        ("data_17_17.5.pkl",17.5),
-        ("data_17_20.pkl",20),
-        ("data_17_22.5.pkl",22.5),
-        ("data_18_10.pkl",10),
-        ("data_18_15.pkl",15),
-        ("data_18_20.pkl",20)
-        ]
-
-    data = None
-    
-    for filename,airspeed in sources:
-        newdata = pickle.load(open(thisfiledir+"/../wind_tunnel_data/processed/"+filename,"rb"))
-        utils.augment_with_airspeed(newdata,airspeed)
-        data = pd.concat([data,newdata])
-    
-    return data
-
 def get_big3_fits():
     data = load_data()
     neutral_data = utils.filters.select_neutral(data)
@@ -168,7 +148,6 @@ def get_big3_fits():
     return Fit(c_l_curve,C_lift_complex), Fit(c_d_curve,C_drag_complex), Fit(c_m_curve,C_M_complex)
 
 if __name__ == "__main__":
-    
     data = load_data()
 
     neutral_data = utils.select_neutral(data)

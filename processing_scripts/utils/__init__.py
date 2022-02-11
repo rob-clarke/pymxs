@@ -21,6 +21,10 @@ def augment_with_rigpitch(data,rigpitch):
     
     return augmented_data
 
+def augment_with_airspeed(df,airspeed):
+    airspeed = [airspeed]*len(df.index)
+    df['airspeed'] = airspeed
+
 def load_dir(dirpath,add_rigpitch=True):
     def load_file(dirpath,filename):
         data = pd.read_csv(os.path.join(dirpath,filename))
@@ -59,31 +63,14 @@ def plot_datas(datas,names,xfn,yfn,xlabel="",ylabel="",title="",cfn=None,grid=Tr
     if grid:
         plt.grid()
 
-
-def select_neutral(data,throttle=0.0):
-    return data[
-        (abs(data.aileron)<2.0)
-        & (abs(data.elevator)<2.0)
-        & (abs(data.throttle-throttle)<0.05)
-        & (abs(data.rudder)<2.0)
-        ]
-
-def select_elev(data,elev=None,epsilon=2.0):
-    if elev is None:
-        return data[(abs(data.aileron)<2.0) & (abs(data.rudder)<2.0)]
-    else:
-        return data[
-            (abs(data.aileron)<2.0)
-            & (abs(data.rudder)<2.0)
-            & (abs(data.elevator - elev)<epsilon)
-            ]
+from .filters import *
 
 density = 1.225
 prop_rad = 0.2794/2.0
 
-def qS(airspeed):
+def qS(airspeed,density=density):
     S = 2.625E+05 / 1000**2
     return 0.5 * density * airspeed**2 * S
 
-def qSc(airspeed):
-    return qS(airspeed) * 0.23
+def qSc(airspeed,density=density):
+    return qS(airspeed,density) * 0.23
