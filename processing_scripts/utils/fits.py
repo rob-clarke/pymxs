@@ -48,6 +48,22 @@ def poly_surface(x,y,order,*args):
             argindex += 1
     return result
 
+def poly_manifold(x,y,z,order,*args):    
+    if order == 0:
+        return args[0]
+    if order == 1:
+        return args[0] * x + args[1] * y + args[2] * z + args[3]
+    if order == 2:
+        return args[0]*x*x + args[1]*x*y + args[2]*x*z + args[3]*y*y + args[4]*y*z + args[5]*z*z \
+            + args[6]*x + args[7]*y + args[8]*z \
+            + args[9]
+    if order == 3:
+        return args[0]*x*x*x + args[1]*x*x*y + args[2]*x*x*z + args[3]*x*y*y + args[4]*x*y*z + args[5]*x*z*z + args[6]*y*y*x + args[7]*y*y*y + args[8]*y*y*z + args[9]*y*z*z + args[10]*z*z*z \
+            + args[11]*x*x + args[12]*x*y + args[13]*y*y + args[14]*x*z + args[15]*y*z + args[16]*z*z \
+            + args[17]*x + args[18]*y + args[19]*z \
+            + args[20]
+
+
 class Fit:
     def __init__(self,fn,args):
         self.fn = fn

@@ -9,7 +9,7 @@ from common import load_data, make_plot
 
 from processing_scripts import utils
 
-from processing_scripts.utils.fits import tanh, H, S, Fit
+from processing_scripts.utils.fits import poly_manifold, poly_surface, tanh, Fit
 
 import cloudpickle as pickle
 import numpy as np
@@ -135,160 +135,223 @@ def plot_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_thr_fits):
     cbar.set_label("Airspeed (m/s)")
     #ax.legend([f"{t:4.2f}@{a}" for a in airspeeds for t in throttles])
 
-# if CREATE_SURFACES:
-#     # Calc C_M surfaces
-#     fig = plt.figure()
-#     ax = fig.add_subplot(projection='3d')
+def c_m_surf(elev,thr,*args):
+    return poly_surface(elev,thr,3,*args)
+    if len(args) % 4 != 0:
+        raise ValueError("length of args must be divisible by 4")
+    poly_order_p1 = len(args) // 4
+    a = P(thr,*args[0*poly_order_p1:1*poly_order_p1])
+    b = P(thr,*args[1*poly_order_p1:2*poly_order_p1])
+    c = P(thr,*args[2*poly_order_p1:3*poly_order_p1])
+    d = P(thr,*args[3*poly_order_p1:4*poly_order_p1])
+    return tanh(elev,a,b,c,d)
 
-#     def c_m_surf(elev,thr,*args):
-#         if len(args) % 4 != 0:
-#             raise ValueError("length of args must be divisible by 4")
-#         poly_order_p1 = len(args) // 4
-#         a = P(thr,*args[0*poly_order_p1:1*poly_order_p1])
-#         b = P(thr,*args[1*poly_order_p1:2*poly_order_p1])
-#         c = P(thr,*args[2*poly_order_p1:3*poly_order_p1])
-#         d = P(thr,*args[3*poly_order_p1:4*poly_order_p1])
-#         return tanh(elev,a,b,c,d)
+def calculate_C_M_delta_elev_thr_surfaces(data,c_m_pitch_fit):
+    # Calc C_M surfaces    
 
-#     def surface_least_sq(params,data,c_ms):
-#         c_me = c_m_surf(np.radians(data.elevator),data.throttle,*params)
+    def surface_least_sq(params,data,c_ms):
+        c_me = c_m_surf(np.radians(data.elevator),data.throttle,*params)
+        return np.linalg.norm(c_me - c_ms)
+
+    import itertools
+
+    fits = {}
+
+    for aspd in airspeeds:
+        # Select data for this airspeed
+        threlevdata = data[
+                (abs(data.rig_pitch - 2.5)<0.5)
+                & (abs(data.aileron)<2.0)
+                & (abs(data.rudder)<2.0)
+                & (abs(data.airspeed - aspd)<0.05)
+            ]
+
+        if len(threlevdata.index) == 0:
+            continue
         
-#         return np.linalg.norm(c_me - c_ms)
-
-#     import itertools
-
-#     for aspd in airspeeds:
-#         threlevdata = data[
-#                 (abs(data.rig_pitch - 2.5)<0.5)
-#                 & (abs(data.aileron)<2.0)
-#                 & (abs(data.rudder)<2.0)
-#                 & (abs(data.airspeed - aspd)<0.05)
-#             ]
-
-#         if len(threlevdata.index) != 0:
-#             c_m_deltas,_ = calculate_c_m_elev(threlevdata,False)
-#             m0 = [0.0,0.0,0.0,0.0]
-#             c0 = fits[f"c_m_delta_elev@0.5/{aspd}"][0].args
-#             x0 = list(itertools.chain(*zip(c0,m0)))
-            
-#             bounds = [(-np.inf,np.inf)]*len(x0)
-#             # Set lower bound on tanh horizontal stretch
-#             #bounds[3] = (0.3,np.inf)
-            
-#             res = scipy.optimize.minimize(surface_least_sq,x0,args=(threlevdata,c_m_deltas),method='Powell',options={"maxiter":100000},bounds=bounds)
-#             print(f"Surface optimised for aspd:{aspd:5.1f}: {res.x}")
-            
-#             thing_to_color = ax.scatter(threlevdata.elevator,threlevdata.throttle,c_m_deltas,c=threlevdata.airspeed,norm=cnorm,marker="+")
-            
-#             elevator_samples = np.linspace(-30,30)
-#             throttle_samples = np.linspace(0,0.8)
-#             T,E = np.meshgrid(throttle_samples,elevator_samples)
-            
-#             fits[f"c_m_delta_elev@{aspd}"] = (Fit(c_m_surf,res.x),"Change in C_m wrt (elevator(rad),throttle) at airspeed")
-            
-#             c_me = np.array(c_m_surf(np.radians(np.ravel(E)),np.ravel(T),*res.x))
-#             CM = c_me.reshape(E.shape)
-            
-#             ax.plot_surface(E,T,CM,color=[*cmap(cnorm(aspd))[0:3],0.5])
-
-#     ax.set_xlabel("Elevator angle (deg)")
-#     ax.set_ylabel("Throttle setting")
-#     ax.set_zlabel("C_M contribution")
-#     #fig.colorbar(thing_to_color)
-
-# if CREATE_MANIFOLD:
-#     # Calc C_N manifold
-#     SURFACE_POLY_ORDER = 1
-#     MANIFOLD_POLY_ORDER = 2
-
-#     fig = plt.figure()
-#     ax = fig.add_subplot(projection='3d')
-
-#     def c_m_manif(elev,thr,aspd,surface_order,*args):
-#         order = surface_order + 1
-#         if len(args) % order != 0:
-#             raise ValueError(f"length of args must be divisible by 4*(order+1) ({4*(order+1)})")
-#         poly_order_p1 = len(args) // (4*order)
-
-#         polyresults = []
-#         for i in range(4*order):
-#             polyresults.append(P(aspd,*args[i*poly_order_p1:(i+1)*poly_order_p1]))
+        c_m_deltas,_ = calculate_c_m_elev(threlevdata,c_m_pitch_fit,None,False)
         
-#         return c_m_surf(elev,thr, *polyresults)
-
-#     def manif_least_sq(params,data,c_ns):
-#         c_me = c_m_manif(np.radians(data.elevator),data.throttle,data.airspeed,2,*params)
+        # m0 = [0.0,0.0,0.0,0.0]
+        # c0 = fits[f"c_m_delta_elev@0.5/{aspd}"][0].args
+        # x0 = list(itertools.chain(*zip(c0,m0)))
         
-#         return np.linalg.norm(c_me - c_ns)
-
-#     threlevdata = data[
-#             (abs(data.rig_pitch - 2.5)<0.5)
-#             & (abs(data.aileron)<2.0)
-#             & (abs(data.rudder)<2.0)
-#         ]
-
-#     if len(threlevdata.index) != 0:
-#         c_m_deltas,_ = calculate_c_m_elev(threlevdata,False)
-#         #c0 = [0.0]*(SURFACE_POLY_ORDER+1)*4
-#         c0 = fits["c_m_delta_elev@15.0"][0].args
-#         # m0 = [0.0]*len(c0)
-#         # x0 = list(itertools.chain(*zip(c0,m0)))
-#         # c0 = [0.5]*4*SURFACE_POLY_ORDER
-#         b0 = [0.0]*len(c0)
-#         a0 = [0.0]*len(c0)
-#         x0 = list(itertools.chain(*zip(c0,b0,a0)))
-#         res = scipy.optimize.minimize(manif_least_sq,x0,args=(threlevdata,c_m_deltas),method="CG",options={"maxiter":100000})
-#         print(res)
-#         print(f"Manifold optimised: {res.x}")
+        x0 = [1.0]*10
         
-#         thing_to_color = ax.scatter(threlevdata.elevator,threlevdata.throttle,c_m_deltas,c=threlevdata.airspeed,norm=cnorm,marker="+")
+        bounds = [(-np.inf,np.inf)]*len(x0)
+        # Set lower bound on tanh horizontal stretch
+        #bounds[3] = (0.3,np.inf)
         
-#         for aspd in airspeeds:
-#             elevator_samples = np.linspace(-30,30)
-#             throttle_samples = np.linspace(0,1)
-#             T,E = np.meshgrid(throttle_samples,elevator_samples)
-            
-#             c_ne = np.array(c_m_manif(np.radians(np.ravel(E)),np.ravel(T),aspd,SURFACE_POLY_ORDER,*res.x))
-#             CM = c_ne.reshape(E.shape)
-            
-#             ax.plot_surface(E,T,CM,color=[*cmap(cnorm(aspd))[0:3],0.5])
+        res = scipy.optimize.minimize(surface_least_sq,x0,args=(threlevdata,c_m_deltas),method='Powell',options={"maxiter":100000},bounds=bounds)
+        #print(f"Surface optimised for aspd:{aspd:5.1f}: {res.x}")
+        
+        fits[f"c_m_delta_elev@{aspd}"] = (Fit(c_m_surf,res.x),"Change in C_m wrt (elevator(rad),throttle) at airspeed")
+    
+    return fits
 
-#     ax.set_xlabel("Rudder angle (deg)")
-#     ax.set_ylabel("Throttle setting")
-#     ax.set_zlabel("C_N contribution")
-#     #fig.colorbar(thing_to_color)
+def plot_C_M_delta_elev_thr_surfaces(data,c_m_pitch_fit,c_m_delta_elev_thr_surface_fits):
+    # Plot C_M surfaces
+    cmap = plt.get_cmap('viridis')
+    cnorm = matplotlib.colors.Normalize(10.0,22.5)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+
+    for aspd in airspeeds:
+        threlevdata = data[
+                (abs(data.rig_pitch - 2.5)<0.5)
+                & (abs(data.aileron)<2.0)
+                & (abs(data.rudder)<2.0)
+                & (abs(data.airspeed - aspd)<0.05)
+            ]
+
+        if len(threlevdata.index) == 0:
+            continue
+        
+        c_m_deltas,_ = calculate_c_m_elev(threlevdata,c_m_pitch_fit,None,False)
+                
+        thing_to_color = ax.scatter(threlevdata.elevator,threlevdata.throttle,c_m_deltas,c=threlevdata.airspeed,norm=cnorm,marker="+")
+        
+        elevator_samples = np.linspace(-35,35)
+        throttle_samples = np.linspace(0,0.8)
+        T,E = np.meshgrid(throttle_samples,elevator_samples)
+        
+        c_me = np.array(c_m_delta_elev_thr_surface_fits[f"c_m_delta_elev@{aspd}"][0](np.radians(np.ravel(E)),np.ravel(T)) )
+        CM = c_me.reshape(E.shape)
+        
+        ax.plot_surface(E,T,CM,color=[*cmap(cnorm(aspd))[0:3],0.5])
+
+    ax.set_xlabel("Elevator angle (deg)")
+    ax.set_ylabel("Throttle setting")
+    ax.set_zlabel("C_M contribution")
+    cbar = fig.colorbar(thing_to_color)
+    cbar.set_label("Airspeed")
+
+def c_m_manif(elev,thr,aspd,surface_order,*args):
+    return poly_manifold(elev,thr,aspd,3,*args)
+    order = surface_order + 1
+    if len(args) % order != 0:
+        raise ValueError(f"length of args must be divisible by 4*(order+1) ({4*(order+1)})")
+    poly_order_p1 = len(args) // (4*order)
+
+    polyresults = []
+    for i in range(4*order):
+        polyresults.append(P(aspd,*args[i*poly_order_p1:(i+1)*poly_order_p1]))
+    
+    return c_m_surf(elev,thr, *polyresults)
+
+def calculate_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit):
+    # Calc C_M manifold
+    
+    def manif_least_sq(params,data,c_ms):
+        c_me = c_m_manif(np.radians(data.elevator),data.throttle,data.airspeed,None,*params)
+        
+        return np.linalg.norm(c_me - c_ms)
+
+    threlevdata = data[
+            (abs(data.rig_pitch - 2.5)<0.5)
+            & (abs(data.aileron)<2.0)
+            & (abs(data.rudder)<2.0)
+        ]
+
+    if len(threlevdata.index) == 0:
+        return None
+    
+    c_m_deltas,_ = calculate_c_m_elev(threlevdata,c_m_pitch_fit,None,False)
+    # #c0 = [0.0]*(SURFACE_POLY_ORDER+1)*4
+    # c0 = fits["c_m_delta_elev@15.0"][0].args
+    # # m0 = [0.0]*len(c0)
+    # # x0 = list(itertools.chain(*zip(c0,m0)))
+    # # c0 = [0.5]*4*SURFACE_POLY_ORDER
+    # b0 = [0.0]*len(c0)
+    # a0 = [0.0]*len(c0)
+    # x0 = list(itertools.chain(*zip(c0,b0,a0)))
+    x0 = [0.01]*21
+    res = scipy.optimize.minimize(manif_least_sq,x0,args=(threlevdata,c_m_deltas),method="Powell",options={"maxiter":100000})
+
+    return Fit(c_m_manif,[None,*res.x]),res
 
 
-#     fits[f"c_m_delta_elev"] = (Fit(c_m_manif,[SURFACE_POLY_ORDER,*res.x]),"Change in C_m wrt (elevator(rad),throttle,airspeed)")
+def plot_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit, c_m_delta_elev_thr_manifold_fit):
+    # Plot C_M manifold
+    cmap = plt.get_cmap('viridis')
+    cnorm = matplotlib.colors.Normalize(10.0,22.5)
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    
+    threlevdata = data[
+            (abs(data.rig_pitch - 2.5)<0.5)
+            & (abs(data.aileron)<2.0)
+            & (abs(data.rudder)<2.0)
+        ]
 
-#     manifold = fits["c_m_delta_elev"][0]
+    if len(threlevdata.index) == 0:
+        return
 
-# fig = plt.figure()
-# axs = fig.subplots(2,3)
+    c_m_deltas,_ = calculate_c_m_elev(threlevdata,c_m_pitch_fit,None,False)
+    
+    thing_to_color = ax.scatter(threlevdata.elevator,threlevdata.throttle,c_m_deltas,c=threlevdata.airspeed,norm=cnorm,marker="+")
+    
+    for aspd in airspeeds:
+        elevator_samples = np.linspace(-35,35)
+        throttle_samples = np.linspace(0,1)
+        T,E = np.meshgrid(throttle_samples,elevator_samples)
+        
+        c_ne = np.array(c_m_delta_elev_thr_manifold_fit(np.radians(np.ravel(E)),np.ravel(T),aspd))
+        CM = c_ne.reshape(E.shape)
+        
+        ax.plot_surface(E,T,CM,color=[*cmap(cnorm(aspd))[0:3],0.5])
 
-# colours = ["red","green","blue","orange","purple","brown","yellow","pink","black","grey"]
-# positions = [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
+    ax.set_xlabel("Elevator angle (deg)")
+    ax.set_ylabel("Throttle setting")
+    ax.set_zlabel("C_M contribution")
+    fig.colorbar(thing_to_color)
 
-# for (p,pitch) in enumerate(pitches):
-#     for (t,thr) in enumerate(throttles):
-#         for (i,aspd) in enumerate(airspeeds):
-#             fit_key = f"c_m_delta_elev@{thr}/{aspd}/{pitch}"
-#             if fit_key not in fits:
-#                 continue
-#             fit = fits[fit_key][0]
-            
-#             (j,k) = positions[i]
-            
-#             samples = np.linspace(-30,30)
-#             axs[j][k].plot(samples,fit(np.radians(samples)),color=colours[p])
-#             if CREATE_SURFACES:
-#                 surface = fits[f"c_m_delta_elev@{aspd}"][0]
-#                 axs[j][k].plot(samples,surface(np.radians(samples),thr),'.',color=colours[t])
-#             if CREATE_MANIFOLD:
-#                 axs[j][k].plot(samples,manifold(np.radians(samples),thr,aspd),'--',color=colours[t])
-#             axs[j][k].set_title(f"{aspd}")
+def plot_fit_analysis(data,c_m_pitch_fit,line_fits,surface_fits,manifold_fit):
+    fig = plt.figure()
+    axs = fig.subplots(2,3)
 
-# plt.show()
+    colours = ["red","green","blue","orange","purple","brown","yellow","pink","black","grey"]
+    positions = [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
+
+    for (p,pitch) in enumerate(pitches):
+        for (t,thr) in enumerate(throttles):
+            for (i,aspd) in enumerate(airspeeds):
+                pointdata = data[
+                    (abs(data.rig_pitch - pitch)<0.5)
+                    & (abs(data.aileron)<2.0)
+                    & (abs(data.rudder)<2.0)
+                    & (abs(data.throttle - thr)<0.05)
+                    & (abs(data.airspeed - aspd)<0.05)
+                    ]
+                
+                line_fit = None
+                if line_fits is not None:
+                    line_fit_key = f"c_m_delta_elev@{thr}/{aspd}/{pitch}"
+                    if line_fit_key in line_fits:
+                        line_fit = line_fits[line_fit_key][0] 
+                
+                surface_fit = None
+                if surface_fits is not None:
+                    surface_fit_key = f"c_m_delta_elev@{aspd}"
+                    if surface_fit_key in surface_fits:
+                        surface_fit = surface_fits[surface_fit_key][0]
+                
+                (j,k) = positions[i]
+                
+                samples = np.linspace(-35,35)
+                if len(pointdata.index) > 0:
+                    c_m_deltas,_ = calculate_c_m_elev(pointdata,c_m_pitch_fit,None,False)
+                    axs[j][k].scatter(pointdata.elevator,c_m_deltas,color=colours[t])
+                if line_fit is not None:
+                    axs[j][k].plot(samples,line_fit(np.radians(samples)),color=colours[t])
+                if surface_fit is not None:
+                    axs[j][k].plot(samples,surface_fit(np.radians(samples),thr),'.',color=colours[t])
+                if manifold_fit is not None:
+                    axs[j][k].plot(samples,manifold_fit(np.radians(samples),thr,aspd),'--',color=colours[t])
+                axs[j][k].set_title(f"{aspd}")
+
+    plt.show()
 
 # with open("c_m_fits.cpkl","wb") as f:
 #     pickle.dump(fits,f)
@@ -310,7 +373,16 @@ if __name__ == "__main__":
     
     pitches = [2.5]
     
-    c_m_delta_elev_thr_fits = calculate_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_fit)
-    plot_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_thr_fits)
+    # c_m_delta_elev_thr_fits = calculate_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_fit)
+    # plot_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_thr_fits)
+
+    # c_m_delta_elev_thr_surface_fits = calculate_C_M_delta_elev_thr_surfaces(data,c_m_pitch_fit)
+    # plot_C_M_delta_elev_thr_surfaces(data,c_m_pitch_fit,c_m_delta_elev_thr_surface_fits)
+
+    c_m_delta_elev_thr_manifold_fit,res = calculate_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit)
+    print(res)
+    plot_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit, c_m_delta_elev_thr_manifold_fit)
+
+    plot_fit_analysis(data,c_m_pitch_fit,None,None,c_m_delta_elev_thr_manifold_fit)
 
     plt.show()
