@@ -6,7 +6,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aerso = { path = "../pyaerso/aerso" }
+aerso = { path = "../../pyaerso/aerso" }
 
 [build-dependencies]
 serde = "1.0"
