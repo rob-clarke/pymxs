@@ -64,9 +64,10 @@ def plot_datas(datas,names,xfn,yfn,xlabel="",ylabel="",title="",cfn=None,grid=Tr
         plt.grid()
 
 from .filters import *
+from .params import *
 
 density = 1.225
-prop_rad = 0.2794/2.0
+temperature = 293.5
 
 def qS(airspeed,density=density):
     S = 2.625E+05 / 1000**2
@@ -74,3 +75,9 @@ def qS(airspeed,density=density):
 
 def qSc(airspeed,density=density):
     return qS(airspeed,density) * 0.23
+
+def air_viscosity(temperature):
+    return 2.791e-7 * pow(temperature,0.7355)
+
+def reynolds(airspeed,temperature=temperature,density=density):
+    return density * airspeed * chord / air_viscosity(temperature)

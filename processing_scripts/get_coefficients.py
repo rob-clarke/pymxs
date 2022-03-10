@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 import utils
 
-chord = 0.23
+chord = utils.params.chord
 
 def add_airspeed_column(df,airspeed):
     airspeed = [airspeed]*len(df.index)

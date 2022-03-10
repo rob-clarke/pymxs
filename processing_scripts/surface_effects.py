@@ -11,7 +11,7 @@ from . import utils
 
 from .utils.fits import linear, quadratic, tanh, H, S, P, Fit
 
-chord = 0.23
+chord = utils.params.chord
 
 def add_airspeed_column(df,airspeed):
     airspeed = [airspeed]*len(df.index)
