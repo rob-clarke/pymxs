@@ -19,6 +19,7 @@ euler_df = pandas.DataFrame(data=rot_euler, columns=['yaw', 'pitch', 'roll'])
 plt.plot(data.x,-data.z)
 plt.xlabel('x-position')
 plt.ylabel('z-position (inverted)')
+plt.axis('equal')
 
 plt.figure()
 plt.plot(data.time,data.x)
@@ -46,5 +47,10 @@ plt.figure()
 plt.plot(data.time,data.pitching_moment)
 plt.xlabel('Time (s)')
 plt.ylabel('Pitching moment (Nm)')
+
+plt.figure()
+plt.plot(data.time,data.lift)
+plt.xlabel('Time (s)')
+plt.ylabel('Lift_Z (N)')
 
 plt.show()
