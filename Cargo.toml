@@ -12,3 +12,11 @@ aerso = { path = "../pyaerso/aerso" }
 serde = "1.0"
 serde_yaml = "0.8"
 codegen = "0.1.3"
+
+[lib]
+name = "mxsrs"
+path = "src/lib.rs"
+
+[[bin]]
+name = "mxsrs"
+path = "src/main.rs"
