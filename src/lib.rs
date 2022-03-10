@@ -1,4 +1,4 @@
-extern crate aerso;
+pub extern crate aerso;
 
 // Include constants parsed from YAML file
 include!(concat!(env!("OUT_DIR"), "/c_m_delta_elev_fits.rs"));
@@ -195,23 +195,17 @@ impl AeroEffect<[f64;4]> for Thrust {
 }
 
 
-pub struct MXS(pub AffectedBody<[f64;4]>);
+pub struct MXS<W: WindModel>(pub AffectedBody<[f64;4],f64,W>);
 
-impl MXS {
-    pub fn new() -> MXS {
-        let initial_position = Vector3::zeros();
-        let initial_velocity = Vector3::zeros();
-        let initial_attitude = UnitQuaternion::from_euler_angles(0.0,6.0f64.to_radians(),0.0);
-        let initial_rates = Vector3::zeros();
-        
-        Self::new_with_state(initial_position, initial_velocity, initial_attitude, initial_rates)
-    }
+impl<W: WindModel> MXS<W> {
     
-    pub fn new_with_state(initial_position: Vector3, initial_velocity: Vector3, initial_attitude: UnitQuaternion, initial_rates: Vector3) -> MXS {
-        
+    pub fn new_with_state_and_windmodel(
+        initial_position: Vector3, initial_velocity: Vector3,
+        initial_attitude: UnitQuaternion, initial_rates: Vector3,
+        wind_model: W
+    ) -> Self {    
         let k_body = Body::new( 1.5, 0.05*Matrix3::identity(), initial_position, initial_velocity, initial_attitude, initial_rates);
-
-        let a_body = AeroBody::new(k_body);
+        let a_body = AeroBody::<f64,W>::with_wind_model(k_body,wind_model);
         
         MXS {
             0: AffectedBody {
@@ -220,4 +214,25 @@ impl MXS {
             }
         }
     }
+}
+
+impl MXS<aerso::wind_models::ConstantWind<f64>> {
+    
+    pub fn new() -> Self {
+        let initial_position = Vector3::zeros();
+        let initial_velocity = Vector3::zeros();
+        let initial_attitude = UnitQuaternion::from_euler_angles(0.0,6.0f64.to_radians(),0.0);
+        let initial_rates = Vector3::zeros();
+        
+        Self::new_with_state(initial_position, initial_velocity, initial_attitude, initial_rates)
+    }
+    
+    pub fn new_with_state(
+        initial_position: Vector3, initial_velocity: Vector3,
+        initial_attitude: UnitQuaternion, initial_rates: Vector3
+    ) -> Self {
+        let wind_model = wind_models::ConstantWind::new(Vector3::zeros());
+        Self::new_with_state_and_windmodel(initial_position, initial_velocity, initial_attitude, initial_rates, wind_model)
+    }
+
 }
