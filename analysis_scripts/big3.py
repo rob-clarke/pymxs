@@ -101,6 +101,7 @@ def make_top3_plots(neutral_data,c_lifts,C_lift,C_lift_complex,c_ds,C_drag,C_dra
         "Pitch angle (deg)",
         "C_L"
         )
+    ax_cl = ax
 
     # Plot drag
     fig = plt.figure()
@@ -114,6 +115,7 @@ def make_top3_plots(neutral_data,c_lifts,C_lift,C_lift_complex,c_ds,C_drag,C_dra
         "Pitch angle (deg)",
         "C_D"
         )
+    ax_cd = ax
 
     # Plot C_M
     fig = plt.figure()
@@ -127,6 +129,9 @@ def make_top3_plots(neutral_data,c_lifts,C_lift,C_lift_complex,c_ds,C_drag,C_dra
         "Pitch angle (deg)",
         "C_M"
         )
+    ax_cm = ax
+    
+    return ax_cl, ax_cd, ax_cm
 
 def get_big3_fits():
     data = load_data()
@@ -147,11 +152,25 @@ if __name__ == "__main__":
     c_ds,C_drag,C_drag_complex = calculate_C_drag(neutral_data)
     c_ms,C_M,C_M_complex = calculate_C_M(neutral_data)
     
-    make_top3_plots(neutral_data,
+    ax_cl, ax_cd, ax_cm = make_top3_plots(neutral_data,
         c_lifts,C_lift,C_lift_complex,
         c_ds,C_drag,C_drag_complex,
         c_ms,C_M,C_M_complex
         )
+    
+    import pandas as pd
+    xflr_2d_data = pd.read_table(os.path.join(currentdir,'../XFLR/NACA0012Polars/NACA 0012_T1_Re0.250_M0.00_N9.0.txt'),header=0,skiprows=[0,1,2,3,4,5,6,7,8,10],delim_whitespace=True)
+    
+    alpha_offset = -1.5
+    
+    ax_cl.plot(xflr_2d_data['alpha']+alpha_offset,xflr_2d_data['CL'],color="pink")
+    ax_cd.plot(xflr_2d_data['alpha']+alpha_offset,xflr_2d_data['CD'],color="pink")
+    ax_cm.plot(xflr_2d_data['alpha']+alpha_offset,xflr_2d_data['Cm'],color="pink")
+    
+    xflr_3d_data = pd.read_table(os.path.join(currentdir,'../XFLR/T1-15_0 m_s-VLM1.txt'),header=0,skiprows=7,delim_whitespace=True)
+    ax_cl.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['CL'],color="purple")
+    ax_cd.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['CD'],color="purple")
+    ax_cm.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['Cm'],color="purple")
     
     plt.show()
     
