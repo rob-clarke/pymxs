@@ -24,7 +24,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let coeffs: HashMap<String,[f64;4]> = serde_yaml::from_reader(yaml_file)?;
     
     let target_keys: Vec<(String,String)> = vec![
-        ("c_m_delta_elev@0.2/10.0/-10".to_string(),"THR_0_2_ASPD_10_0".to_string())
+        ("c_m_delta_elev@0.2/15.0/2.5".to_string(),"THR_0_2_ASPD_15_0".to_string()),
+        ("c_m_delta_elev@0.35/15.0/2.5".to_string(),"THR_0_35_ASPD_15_0".to_string()),
+        ("c_m_delta_elev@0.5/15.0/2.5".to_string(),"THR_0_5_ASPD_15_0".to_string()),
+        ("c_m_delta_elev@0.65/15.0/2.5".to_string(),"THR_0_65_ASPD_15_0".to_string()),
+        ("c_m_delta_elev@0.8/15.0/2.5".to_string(),"THR_0_8_ASPD_15_0".to_string())
     ];
     
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("c_m_delta_elev_fits.rs");
