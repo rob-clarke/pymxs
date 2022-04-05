@@ -1,4 +1,5 @@
 import os
+from numpy import negative
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,16 +22,51 @@ def augment_with_rigpitch(data,rigpitch):
     
     return augmented_data
 
+def augment_with_rigyaw(data,rigyaw):
+    augmented_columns = ["index",*data.columns,"rig_yaw"]
+    augmented_data = pd.DataFrame(columns=augmented_columns)
+    
+    for row in data.itertuples():
+        augmented_data = augmented_data.append(pd.DataFrame([[*row,rigyaw]],columns=augmented_columns))
+    
+    return augmented_data
+
+def get_value_from_named_part(part):
+    if 'm' in part:
+        part = part[2:]
+        negative = True
+    else:
+        part = part[1:]
+        negative = False
+    
+    value = float(part)
+    return -value if negative else value
+
+def get_rig_orient(filename):
+    filename_parts = filename.split('_')
+    rigpitch_str = filename_parts[2]
+    rigyaw_str = filename_parts[3][:-4]
+
+    rigpitch = get_value_from_named_part(rigpitch_str)
+    rigyaw = get_value_from_named_part(rigyaw_str)
+
+    return rigpitch,rigyaw
+
 def augment_with_airspeed(df,airspeed):
     airspeed = [airspeed]*len(df.index)
     df['airspeed'] = airspeed
 
-def load_dir(dirpath,add_rigpitch=True):
+def load_dir(dirpath,add_rigpitch=True,has_beta=False):
     def load_file(dirpath,filename):
         data = pd.read_csv(os.path.join(dirpath,filename))
         if add_rigpitch:
-            rigpitch = get_rigpitch(filename)
-            data = augment_with_rigpitch(data,rigpitch)
+            if has_beta:
+                rigpitch,rigyaw = get_rig_orient(filename)
+                data = augment_with_rigpitch(data,rigpitch)
+                data = augment_with_rigyaw(data,rigyaw)
+            else:
+                rigpitch = get_rigpitch(filename)
+                data = augment_with_rigpitch(data,rigpitch)
         return data
             
     files = os.listdir(dirpath)
@@ -42,8 +78,8 @@ from . import tares, controls
 from .clean import transform_data, calc_lift_drag, shift_data
 from .controls import calc_controls
 
-def process_dir(dirpath,tare):
-    raw_data = load_dir(dirpath)
+def process_dir(dirpath,tare,has_beta=False):
+    raw_data = load_dir(dirpath,add_rigpitch=True,has_beta=has_beta)
     tared_data = tare.apply_tare_funcs(raw_data)
     aligned_data = shift_data(transform_data(tared_data))
     augmented_data = calc_lift_drag(calc_controls(aligned_data))
