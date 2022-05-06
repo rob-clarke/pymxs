@@ -58,7 +58,7 @@ def augment_with_airspeed(df,airspeed):
 
 def load_dir(dirpath,add_rigpitch=True,has_beta=False):
     def load_file(dirpath,filename):
-        data = pd.read_csv(os.path.join(dirpath,filename))
+        data = pd.read_csv(os.path.join(dirpath,filename),engine='c')
         if add_rigpitch:
             if has_beta:
                 rigpitch,rigyaw = get_rig_orient(filename)
@@ -78,11 +78,11 @@ from . import tares, controls
 from .clean import transform_data, calc_lift_drag, shift_data
 from .controls import calc_controls
 
-def process_dir(dirpath,tare,has_beta=False):
+def process_dir(dirpath,tare,has_beta=False,use_april=False):
     raw_data = load_dir(dirpath,add_rigpitch=True,has_beta=has_beta)
     tared_data = tare.apply_tare_funcs(raw_data)
     aligned_data = shift_data(transform_data(tared_data))
-    augmented_data = calc_lift_drag(calc_controls(aligned_data))
+    augmented_data = calc_lift_drag(calc_controls(aligned_data,use_april=use_april))
     return augmented_data
 
 def plot_datas(datas,names,xfn,yfn,xlabel="",ylabel="",title="",cfn=None,grid=True,fnargs=None):
