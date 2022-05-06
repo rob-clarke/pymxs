@@ -8,9 +8,20 @@ import pandas as pd
 
 import processing_scripts.utils as utils
 
-def load_data():
+def _load_data(sources):
     thisfiledir = os.path.dirname(os.path.abspath(__file__))
     
+    data = None
+    
+    for filename,airspeed in sources:
+        newdata = pickle.load(open(thisfiledir+"/../wind_tunnel_data/processed/"+filename,"rb"))
+        utils.augment_with_airspeed(newdata,airspeed)
+        data = pd.concat([data,newdata])
+    
+    return data
+
+
+def load_data():
     sources = [
         ("data_17_10.pkl",10),
         ("data_17_12.5.pkl",12.5),
@@ -22,15 +33,23 @@ def load_data():
         ("data_18_15.pkl",15),
         ("data_18_20.pkl",20)
         ]
+    return _load_data(sources)
 
-    data = None
-    
-    for filename,airspeed in sources:
-        newdata = pickle.load(open(thisfiledir+"/../wind_tunnel_data/processed/"+filename,"rb"))
-        utils.augment_with_airspeed(newdata,airspeed)
-        data = pd.concat([data,newdata])
-    
-    return data
+
+def load_beta_data():
+    sources = [
+        ("data_05_10.pkl",10),
+        ("data_05_12.5.pkl",12.5),
+        ("data_05_15.pkl",15),
+        ("data_05_17.5.pkl",17.5),
+        ("data_05_20.pkl",20),
+        
+        ("data_05_10p.pkl",10),
+        ("data_06_16.5.pkl",16.5),
+        ("data_07_13.5.pkl",13.5),
+        ]
+    return _load_data(sources)
+
 
 def make_plot(ax,xs,ys,samples1,fit1,samples2,fit2,xlabel,ylabel,grid=True):
     ax.scatter(xs,ys)
