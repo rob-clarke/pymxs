@@ -53,6 +53,10 @@ def load_10():
 
 data_10_prop = load_pickle("data_05_10p.pkl",load_10)
 
+import sys
+if sys.argv[1] == "noplot":
+    sys.exit(0)
+
 # plt.figure()
 # plt.scatter(range(len(data_15_t1.index)),data_15_t1.aileron)
 

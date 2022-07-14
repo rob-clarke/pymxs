@@ -42,6 +42,10 @@ else:
     with open(pickle_path,"wb") as f:
         pickle.dump(data_16_5_t1,f)
 
+import sys
+if sys.argv[1] == "noplot":
+    sys.exit(0)
+
 # plt.figure()
 # plt.scatter(range(len(data_15_t1.index)),data_15_t1.aileron)
 
