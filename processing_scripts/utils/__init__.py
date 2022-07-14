@@ -75,7 +75,7 @@ def load_dir(dirpath,add_rigpitch=True,has_beta=False):
 
 from . import tares, controls
 
-from .clean import transform_data, calc_lift_drag, shift_data
+from .clean import calc_sideforce, transform_data, calc_lift_drag, shift_data
 from .controls import calc_controls
 
 def process_dir(dirpath,tare,has_beta=False,use_april=False):
@@ -83,6 +83,8 @@ def process_dir(dirpath,tare,has_beta=False,use_april=False):
     tared_data = tare.apply_tare_funcs(raw_data)
     aligned_data = shift_data(transform_data(tared_data))
     augmented_data = calc_lift_drag(calc_controls(aligned_data,use_april=use_april))
+    if has_beta:
+        augmented_data = calc_sideforce(augmented_data)
     return augmented_data
 
 def plot_datas(datas,names,xfn,yfn,xlabel="",ylabel="",title="",cfn=None,grid=True,fnargs=None):

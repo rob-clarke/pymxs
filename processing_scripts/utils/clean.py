@@ -2,6 +2,8 @@ import math
 import numpy as np
 import pandas as pd
 
+from scipy.spatial.transform import Rotation
+
 def transform_data(data):
     # As mounted in aircraft, load cell convention is:
     # x+ -> Towards left wing
@@ -47,9 +49,17 @@ def shift_data(data,offset=[0.015,0.0,-0.023]):
     
     return data_out
 
+def _get_windaxis_forces(row,pitch_offset=0.0):
+    pitch = np.radians(row.rig_pitch+pitch_offset)
+    if hasattr(row,"rig_yaw"):
+        yaw = np.radians(row.rig_yaw)
+    else:
+        yaw = 0.0
+    rotation = Rotation.from_euler('zyx',[yaw,pitch,0.0])
+    return rotation.inv().apply([row.load_x,row.load_y,row.load_z])
+
 def calc_lift_drag(data):
     augmented_columns = ["index",*data.columns,"lift","drag"]
-    augmented_data = pd.DataFrame(columns=augmented_columns)
     
     # SUA: T&P pp 49
     # [F_x] = [[ cos(a) -sin(a) ]] [-D]
@@ -60,10 +70,31 @@ def calc_lift_drag(data):
     # [-D] = [[  cos(a)  sin(a) ]] [F_x]
     # [-L]   [[ -sin(a)  cos(a) ]] [F_z]
     
-    for row in data.itertuples():
-        pitch = np.radians(row.rig_pitch)
-        drag = -(row.load_x * math.cos(pitch) + row.load_z * math.sin(pitch))
-        lift = -(-row.load_x * math.sin(pitch) + row.load_z * math.cos(pitch))
-        augmented_data = augmented_data.append(pd.DataFrame([[*row,lift,drag]],columns=augmented_columns))
+    augmented_rows = [[None]*len(augmented_columns)] * len(data.index)
     
-    return augmented_data
+    for (i,row) in enumerate(data.itertuples()):
+        pitch = np.radians(row.rig_pitch)
+        if hasattr(row,"rig_yaw"):
+            yaw = np.radians(row.rig_yaw)
+            rotation = Rotation.from_euler('zyx',[yaw,pitch,0.0])
+            [drag,_,lift] = -rotation.inv().apply([row.load_x,row.load_y,row.load_z])
+        else:
+            yaw = 0.0
+            drag = -(row.load_x * math.cos(pitch) + row.load_z * math.sin(pitch))
+            lift = -(-row.load_x * math.sin(pitch) + row.load_z * math.cos(pitch))
+        
+        augmented_rows[i] = [*row,lift,drag]
+    
+    return pd.DataFrame(augmented_rows,columns=augmented_columns)
+
+def calc_sideforce(data):
+    augmented_columns = ["index",*data.columns,"sideforce"]
+    
+    augmented_rows = [[None]*len(augmented_columns)] * len(data.index)
+    
+    for (i,row) in enumerate(data.itertuples()):
+        [_,sideforce,_] = _get_windaxis_forces(row)
+        augmented_rows[i] = [*row,sideforce]
+    
+    return pd.DataFrame(augmented_rows,columns=augmented_columns)
+    
