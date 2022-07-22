@@ -1,5 +1,5 @@
 import os,sys
-sys.path.append(os.path.join(os.getcwd(),'../../../../baerig/BAERigUI'))
+sys.path.append(os.path.join(os.getcwd(),'../../../baerig/BAERigUI'))
 
 from api.experiment import Experiment
 from api.experiment.tares import Tare

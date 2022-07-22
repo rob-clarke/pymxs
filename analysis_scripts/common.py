@@ -14,7 +14,10 @@ def _load_data(sources):
     data = None
     
     for filename,airspeed in sources:
-        newdata = pickle.load(open(thisfiledir+"/../wind_tunnel_data/processed/"+filename,"rb"))
+        with open(thisfiledir+"/../wind_tunnel_data/processed/"+filename,"rb") as f:
+            newdata = pickle.load(f)
+        newdata.index = newdata["index"].iloc[:,-1]
+        newdata = newdata.drop("index",axis="columns")
         utils.augment_with_airspeed(newdata,airspeed)
         data = pd.concat([data,newdata])
     
@@ -47,6 +50,24 @@ def load_beta_data():
         ("data_05_10p.pkl",10),
         ("data_06_16.5.pkl",16.5),
         ("data_07_13.5.pkl",13.5),
+        ]
+    return _load_data(sources)
+
+def load_prop_beta_data():
+    sources = [
+        ("data_05_10p.pkl",10),
+        ("data_06_16.5.pkl",16.5),
+        ("data_07_13.5.pkl",13.5),
+        ]
+    return _load_data(sources)
+
+def load_noprop_beta_data():
+    sources = [
+        ("data_05_10.pkl",10),
+        ("data_05_12.5.pkl",12.5),
+        ("data_05_15.pkl",15),
+        ("data_05_17.5.pkl",17.5),
+        ("data_05_20.pkl",20)
         ]
     return _load_data(sources)
 
