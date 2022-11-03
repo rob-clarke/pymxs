@@ -1,0 +1,15 @@
+Beta: 0, 3, 6, 15, 25
+Airspeed: 10, 13.5, 16.5, 20
+Alpha: -12, -6, 0, 5, 10, 12
+
+Using:
+Ail 20, 4 steps
+Ele 30, 5 steps
+Rud 20, 4 steps
+
+Recommence with:
+13.5m/s @ 10a & 12a
+
+Then 13.5m/s @ -5a -12a
+
+Recommence with -15b

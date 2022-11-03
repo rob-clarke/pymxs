@@ -1,0 +1,3 @@
+[submodule "pyaerso"]
+	path = pyaerso
+	url = ssh://git@github.com/rob-clarke/pyaerso

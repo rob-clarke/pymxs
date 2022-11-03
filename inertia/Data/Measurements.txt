@@ -1,0 +1,44 @@
+Vicon frame rate: 30Hz
+
+String lengths:
+A: 1423 mm
+B: 1420 mm
+C: 1405 mm
+
+
+Tare points:
+A: +40535
+B: -66832
+C: -31617
+
+Lower triangle mass:
+344g
+
+
+Yaw orientation: 15g total difference
+First Pic
+
+Pitch orientation: 11g total difference
+Second Pic
+Clamp on tail side of triangle 307 mm from upper surface attachment point
+Clamp on tail side of triangle 305 mm from lower surface attachment point
+
+Clamp mass
+Third pic
+
+Roll orientation: 13g total difference
+Fourth pic
+Wood blocks
+
+Wood blocks only: 25g total difference
+Fifth pic
+
+
+Roll no batt: 15g total difference
+Sixth pic
+
+Pitch no batt: <10g total difference
+Seventh pic
+
+Yaw no batt: < 5g total difference
+Eigth pic
