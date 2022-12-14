@@ -47,7 +47,7 @@ def thrust_model_surf(thr,aspd,*args):
         
         # #return np.maximum(z,0.0)
         # return z
-        return poly_surface(thr,aspd,2,*args)
+        return poly_surface(thr,aspd,3,*args)
 
 def calculate_plot_throttle(data,c_lift_fit,c_drag_fit):
     # Calculate C_T
@@ -61,7 +61,8 @@ def calculate_plot_throttle(data,c_lift_fit,c_drag_fit):
 
     thrust = calculate_thrust(thrdata, c_lift_fit, c_drag_fit)
 
-    #thrdata,thrust = add_zeros(thrdata,thrust)
+    thrdata,thrust = add_zeros(thrdata,thrust)
+    thrdata,thrust = add_zeros(thrdata,thrust)
     
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
@@ -83,7 +84,7 @@ def calculate_plot_throttle(data,c_lift_fit,c_drag_fit):
     # b0 = [10.0,10.0,10.0,10.0]
     # c0 = b0
     # x0 = list(itertools.chain(*zip(c0,b0)))
-    x0 = [1.0]*6
+    x0 = [1.0]*10
     
     bounds = [(-np.inf,np.inf)]*len(x0)
     # Set lower bound on tanh horizontal stretch

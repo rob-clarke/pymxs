@@ -176,6 +176,24 @@ def make_top3_plots(neutral_data,c_lifts,C_lift,C_lift_complex,c_ds,C_drag,C_dra
     
     return ax_cl, ax_cd, ax_cm
 
+
+S_w = 0.263
+c_w = 0.24
+S_t = 0.0825
+c_t = 0.165
+x_t = -0.585 - -0.09 - (c_t*0.25)
+
+q = 0.5 * 1.225 * 15**2
+tail_setting_angle = math.radians(-0.75) # +ve = upward from reference
+
+def tail_moment(alpha):
+    lift = q * S_t * c_lta(alpha)
+    drag = q * S_t * c_dta(alpha)
+    resolved = lift * np.cos(alpha) + drag * np.sin(alpha)
+    return x_t * resolved
+
+
+
 def get_big3_fits():
     data = load_data()
     neutral_data = utils.filters.select_neutral(data)
@@ -184,7 +202,16 @@ def get_big3_fits():
     _,_,C_drag_complex = calculate_C_drag(neutral_data)
     _,_,C_M_complex = calculate_C_M(neutral_data)
     
-    return Fit(c_l_curve,C_lift_complex), Fit(c_d_curve,C_drag_complex), Fit(c_m_curve,C_M_complex)
+    def downwash_angle(alpha, derate=True):
+        c_lw = c_l_curve(alpha,*C_lift_complex)
+        return 2 * c_lw / (np.pi * 4.54) * ( S(alpha,-math.pi/4,math.pi/4) if derate else 1.0 )
+    
+    def effective_cm(alpha,derate=True):
+        alpha = alpha - downwash_angle(alpha,derate) + tail_setting_angle
+        return tail_moment(alpha) / (q*S_w*c_w)
+    
+    # return Fit(c_l_curve,C_lift_complex), Fit(c_d_curve,C_drag_complex), Fit(c_m_curve,C_M_complex)
+    return Fit(c_l_curve,C_lift_complex), Fit(c_d_curve,C_drag_complex), Fit(effective_cm, [True])
 
 if __name__ == "__main__":
     import sys
@@ -232,20 +259,6 @@ if __name__ == "__main__":
     ax_cl.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['CL'],color="purple")
     ax_cd.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['CD'],color="purple")
     ax_cm.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['Cm'],color="purple")
-    
-    S_w = 0.263
-    c_w = 0.24
-    S_t = 0.0825
-    c_t = 0.165
-    x_t = -0.585 - -0.09 - (c_t*0.25)
-    q = 0.5 * 1.225 * 15**2
-    tail_setting_angle = math.radians(-0.75) # +ve = upward from reference
-
-    def tail_moment(alpha):
-        lift = q * S_t * c_lta(alpha)
-        drag = q * S_t * c_dta(alpha)
-        resolved = lift * np.cos(alpha) + drag * np.sin(alpha)
-        return x_t * resolved
     
     def downwash_angle(alpha, derate=True):
         c_lw = c_l_curve(alpha,*C_lift_complex)

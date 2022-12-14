@@ -49,10 +49,11 @@ def plot_C_M_delta_elev(elevdata,c_m_pitch_fit,c_m_delta_elev_fit):
 
 
 pitches = [-10,-7.5,-5,-2.5,0.0,2.5,5,7.5,10]
-throttles = [0.2,0.35,0.5,0.65,0.8]
+throttles = [0.0,0.2,0.35,0.5,0.65,0.8]
 airspeeds = [10.0,12.5,15.0,17.5,20.0,22.5]
 
 def calculate_c_m_elev(data,c_m_pitch_fit,c_m_delta_elev_fit,optimize=True,with_wash=False):
+    print(f"{len(data.index)=}")
     def thrust_val(throttle):
         pwm = (throttle * 1000) + 1000
         thrust = -4.120765323840711e-05 * pwm**2 + 0.14130986760422384 * pwm - 110
@@ -227,7 +228,7 @@ def plot_C_M_delta_elev_thr_surfaces(data,c_m_pitch_fit,c_m_delta_elev_thr_surfa
     cbar.set_label("Airspeed")
 
 def c_m_manif(elev,thr,aspd,surface_order,*args):
-    return poly_manifold(elev,thr,aspd,3,*args)
+    return poly_manifold(elev,thr,aspd,2,*args)
     order = surface_order + 1
     if len(args) % order != 0:
         raise ValueError(f"length of args must be divisible by 4*(order+1) ({4*(order+1)})")
@@ -373,16 +374,16 @@ if __name__ == "__main__":
     
     pitches = [2.5]
     
-    # c_m_delta_elev_thr_fits = calculate_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_fit)
-    # plot_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_thr_fits)
+    c_m_delta_elev_thr_fits = calculate_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_fit)
+    plot_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_thr_fits)
 
-    # c_m_delta_elev_thr_surface_fits = calculate_C_M_delta_elev_thr_surfaces(data,c_m_pitch_fit)
-    # plot_C_M_delta_elev_thr_surfaces(data,c_m_pitch_fit,c_m_delta_elev_thr_surface_fits)
+    c_m_delta_elev_thr_surface_fits = calculate_C_M_delta_elev_thr_surfaces(data,c_m_pitch_fit)
+    plot_C_M_delta_elev_thr_surfaces(data,c_m_pitch_fit,c_m_delta_elev_thr_surface_fits)
 
     c_m_delta_elev_thr_manifold_fit,res = calculate_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit)
     print(res)
     plot_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit, c_m_delta_elev_thr_manifold_fit)
 
-    plot_fit_analysis(data,c_m_pitch_fit,None,None,c_m_delta_elev_thr_manifold_fit)
+    plot_fit_analysis(data,c_m_pitch_fit,c_m_delta_elev_thr_fits,c_m_delta_elev_thr_surface_fits,c_m_delta_elev_thr_manifold_fit)
 
     plt.show()
