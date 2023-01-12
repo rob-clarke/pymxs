@@ -44,8 +44,6 @@ class WindModel:
     def step(self,dt):
         pass
 
-import isacalc
-
 class DensityModel:
     def get_density(self,position):
         return 1.225
