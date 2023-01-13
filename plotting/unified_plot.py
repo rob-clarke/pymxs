@@ -26,8 +26,8 @@ plt.ylabel('z-position (inverted)')
 plt.axis('equal')
 plt.grid('both')
 
-plt.figure()
-fig, ax = plt.subplots(5,1, sharex=True)
+# plt.figure()
+fig, ax = plt.subplots(6,1, sharex=True)
 
 ax[-1].set_xlabel('Time (s)')
 
@@ -50,5 +50,9 @@ ax[3].grid('both')
 ax[4].plot(data.time,np.degrees(data.elevator))
 ax[4].set_ylabel('Elevator (deg)')
 ax[4].grid('both')
+
+ax[5].plot(data.time,data.throttle)
+ax[5].set_ylabel('Throttle (frac)')
+ax[5].grid('both')
 
 plt.show()

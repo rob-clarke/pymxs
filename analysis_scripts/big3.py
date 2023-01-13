@@ -29,25 +29,20 @@ def c_l_curve(alpha,cl_0,cl_alpha,pstall,nstall):
     a_pdecay = math.radians(30)
     a_ndecay = math.radians(-37)
     linear_regime = S(alpha,nstall,pstall,k_stall) * (cl_0 + cl_alpha * alpha)
-    
+
     post_stall_pos = H(alpha,pstall,k_stall) * (1-H(alpha,a_pdecay,k_decay)) * (alpha + 0.45)
     high_alpha_regime = H(alpha,a_pdecay,k_decay) * 0.8 * ((math.pi/2)-alpha) * (1-H(alpha,math.radians(160),7))
-    
+
     post_stall_neg = H(alpha,a_ndecay,k_decay) * (1-H(alpha,nstall,k_stall)) * (alpha - 0.35)
     low_alpha_regime = (1-H(alpha,a_ndecay,k_decay)) * 0.8 * ((-math.pi/2)-alpha) * H(alpha,math.radians(-160),7)
-    
-    inverse_stall = 0.8 * pstall
-    inverse_attached = S(alpha, np.pi - inverse_stall, np.pi + inverse_stall,k_stall) * cl_alpha * (alpha - np.pi) \
-        + S(alpha, -np.pi - inverse_stall, -np.pi + inverse_stall,k_stall) * cl_alpha * (alpha + np.pi)
-    
+
     return linear_regime \
         + post_stall_pos + high_alpha_regime \
-        + post_stall_neg + low_alpha_regime \
-        + 0 # inverse_attached
+        + post_stall_neg + low_alpha_regime
 
 def calculate_C_lift(neutral_data):
     # Calculate C_lift
-    
+
     c_lifts = neutral_data.lift / utils.qS(neutral_data.airspeed)
 
     popt,pcov = scipy.optimize.curve_fit(linear,np.radians(neutral_data.pitch),c_lifts)
@@ -57,7 +52,7 @@ def calculate_C_lift(neutral_data):
         }
     popt,pcov = scipy.optimize.curve_fit(c_l_curve,np.radians(neutral_data.pitch),c_lifts,[C_lift["zero"],C_lift["alpha"],np.radians(10),-np.radians(10)])
     C_lift_complex = popt
-    
+
     return c_lifts,C_lift,C_lift_complex
 
 
@@ -69,7 +64,7 @@ def c_d_curve(alpha,cd_0,cd_alpha,alpha_cd0):
 
 def calculate_C_drag(neutral_data):
     # Calculate C_drag
-        
+
     c_ds = neutral_data.drag / utils.qS(neutral_data.airspeed)
 
     popt,pcov = scipy.optimize.curve_fit(quadratic,np.radians(neutral_data.pitch),c_ds)
@@ -81,7 +76,7 @@ def calculate_C_drag(neutral_data):
 
     popt,pcov = scipy.optimize.curve_fit(c_d_curve,np.radians(neutral_data.pitch),c_ds,maxfev=10000)
     C_drag_complex = popt
-    
+
     return c_ds,C_drag,C_drag_complex
 
 
@@ -96,7 +91,7 @@ def c_m_curve(alpha,cm_0,alpha_cm0,cm_hscale,cm_vscale):
 
 def calculate_C_M(neutral_data):
     # Calculate C_M
-        
+
     c_ms = neutral_data.load_m / utils.qSc(neutral_data.airspeed)
 
     popt,pcov = scipy.optimize.curve_fit(linear,np.radians(neutral_data.pitch),c_ms)
@@ -107,7 +102,7 @@ def calculate_C_M(neutral_data):
 
     popt,pcov = scipy.optimize.curve_fit(c_m_curve,np.radians(neutral_data.pitch),c_ms,maxfev=100000)
     C_M_complex = popt
-    
+
     return c_ms,C_M,C_M_complex
 
 def c_lta(alpha):
@@ -173,7 +168,7 @@ def make_top3_plots(neutral_data,c_lifts,C_lift,C_lift_complex,c_ds,C_drag,C_dra
         "Pitch moment coefficient"
         )
     ax_cm = ax
-    
+
     return ax_cl, ax_cd, ax_cm
 
 
@@ -197,19 +192,19 @@ def tail_moment(alpha):
 def get_big3_fits():
     data = load_data()
     neutral_data = utils.filters.select_neutral(data)
-    
+
     _,_,C_lift_complex = calculate_C_lift(neutral_data)
     _,_,C_drag_complex = calculate_C_drag(neutral_data)
     _,_,C_M_complex = calculate_C_M(neutral_data)
-    
+
     def downwash_angle(alpha, derate=True):
         c_lw = c_l_curve(alpha,*C_lift_complex)
         return 2 * c_lw / (np.pi * 4.54) * ( S(alpha,-math.pi/4,math.pi/4) if derate else 1.0 )
-    
+
     def effective_cm(alpha,derate=True):
         alpha = alpha - downwash_angle(alpha,derate) + tail_setting_angle
         return tail_moment(alpha) / (q*S_w*c_w)
-    
+
     # return Fit(c_l_curve,C_lift_complex), Fit(c_d_curve,C_drag_complex), Fit(c_m_curve,C_M_complex)
     return Fit(c_l_curve,C_lift_complex), Fit(c_d_curve,C_drag_complex), Fit(effective_cm, [True])
 
@@ -218,21 +213,21 @@ if __name__ == "__main__":
     data = load_data()
 
     neutral_data = utils.select_neutral(data)
-    
+
     c_lifts,C_lift,C_lift_complex = calculate_C_lift(neutral_data)
     c_ds,C_drag,C_drag_complex = calculate_C_drag(neutral_data)
     c_ms,C_M,C_M_complex = calculate_C_M(neutral_data)
-    
+
     ax_cl, ax_cd, ax_cm = make_top3_plots(neutral_data,
         c_lifts,C_lift,C_lift_complex,
         c_ds,C_drag,C_drag_complex,
         c_ms,C_M,C_M_complex
         )
-    
+
     print(f"C_lift_complex = {repr(list(C_lift_complex))}")
     print(f"C_drag_complex = {repr(list(C_drag_complex))}")
     print(f"C_M_complex = {repr(list(C_M_complex))}")
-    
+
     if len(sys.argv) > 1 and sys.argv[1] == "noplot":
         sys.exit(0)
 
@@ -243,13 +238,13 @@ if __name__ == "__main__":
         skiprows=[0,1,2,3,4,5,6,7,8,10],
         delim_whitespace=True
     )
-    
+
     alpha_offset = -1.5
-    
+
     ax_cl.plot(xflr_2d_data['alpha']+alpha_offset,xflr_2d_data['CL'],color="pink")
     ax_cd.plot(xflr_2d_data['alpha']+alpha_offset,xflr_2d_data['CD'],color="pink")
     ax_cm.plot(xflr_2d_data['alpha']+alpha_offset,xflr_2d_data['Cm'],color="pink")
-    
+
     xflr_3d_data = pd.read_table(
         os.path.join(currentdir,'../xflr_data/T1-15_0 m_s-VLM1.txt'),
         header=0,
@@ -259,31 +254,31 @@ if __name__ == "__main__":
     ax_cl.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['CL'],color="purple")
     ax_cd.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['CD'],color="purple")
     ax_cm.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['Cm'],color="purple")
-    
+
     def downwash_angle(alpha, derate=True):
         c_lw = c_l_curve(alpha,*C_lift_complex)
         return 2 * c_lw / (np.pi * 4.54) * ( S(alpha,-math.pi/4,math.pi/4) if derate else 1.0 )
-    
+
     def effective_cm(alpha,derate=True):
         alpha = alpha - downwash_angle(alpha,derate) + tail_setting_angle
         return tail_moment(alpha) / (q*S_w*c_w)
-    
+
     alpha_samples = np.linspace(-180,180,500)
-    
+
     ax_cl.plot(alpha_samples,c_l_curve(np.radians(alpha_samples),*C_lift_complex))
     ax_cd.plot(alpha_samples,c_d_curve(np.radians(alpha_samples),*C_drag_complex))
-    
+
     ax_cl.set_xlim([-35,35])
     ax_cl.set_ylim([-1.3,1.3])
     ax_cl.legend(['Linear fit','XFLR 2D','XFLR 3D','C_L fit'])
-    
+
     ax_cd.set_xlim([-35,35])
     ax_cd.set_ylim([0,1.0])
     ax_cd.legend(['Quadratic fit','XFLR 2D','XFLR 3D','C_D fit'])
-    
+
     ax_cm.plot(alpha_samples,effective_cm(np.radians(alpha_samples),False))
     ax_cm.plot(alpha_samples,effective_cm(np.radians(alpha_samples),True))
-    
+
     # ax_cm.plot(
     #     alpha_samples,
     #     c_m_curve(
@@ -294,13 +289,13 @@ if __name__ == "__main__":
     #         -0.5462
     #     )
     # )
-    
+
     def c_m_curve_noast(alpha,cm_0,alpha_cm0,cm_hscale,cm_vscale):
         alpha_lim = 17
         asymptote = 0.802
         k=10
         return (cm_vscale*np.tan(cm_hscale*(alpha-alpha_cm0)) + cm_0)
-    
+
     # ax_cm.plot(
     #     alpha_samples,
     #     c_m_curve_noast(
@@ -311,7 +306,7 @@ if __name__ == "__main__":
     #         -0.5462
     #     )
     # )
-    
+
     # ax_cm.plot(
     #     alpha_samples,
     #     c_m_curve_noast(
@@ -322,7 +317,7 @@ if __name__ == "__main__":
     ax_cm.set_xlim([-45,45])
     ax_cm.set_ylim([-1,1])
     ax_cm.legend(['Linear fit','Asymptopic fit','XFLR 2D','XFLR 3D','Tail-derived coefficient','TDC downwash fade'])
-    
+
     plt.figure()
     plt.plot(alpha_samples,c_dta(np.radians(alpha_samples)))
     plt.grid(True)
@@ -330,12 +325,11 @@ if __name__ == "__main__":
     plt.figure()
     plt.plot(alpha_samples,c_lta(np.radians(alpha_samples)))
     plt.grid(True)
-    
+
     plt.figure()
     plt.plot(alpha_samples,tail_moment(np.radians(alpha_samples)))
     plt.grid(True)
     plt.ylabel("Tail moment")
     plt.xlabel("Alpha (deg)")
-    
+
     plt.show()
-    

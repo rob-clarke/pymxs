@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+# Replace lines starting with '$ ...' with subprocess.check_call("""... """)
+
+sed -E 's/^(\s*)\$ (.*)$/\1import subprocess; subprocess.check_call("""\2 """, shell=True)/' $1 | python

@@ -20,18 +20,18 @@ class MxsEnv(gym.Env):
             dtype=np.float32
         )
         self.action_space = spaces.Box(
-            low=np.array([-1,np.radians(-30),0,-1], dtype=np.float32),
-            high=np.array([1,np.radians(30),1,1], dtype=np.float32),
-            shape=(4,),
+            low=np.array([np.radians(-60),0], dtype=np.float32),
+            high=np.array([np.radians(60),1], dtype=np.float32),
+            shape=(2,),
             dtype=np.float32
         )
-
-        selected_trim_point = 15
+        
+        self.selected_trim_point = 15
 
         mass = 1.221
         position,velocity,attitude,rates = calc_state(
-            np.radians(trim_points[selected_trim_point][0]),
-            selected_trim_point,
+            np.radians(trim_points[self.selected_trim_point][0]),
+            self.selected_trim_point,
             False
         )
 
@@ -40,7 +40,7 @@ class MxsEnv(gym.Env):
 
         body = Body(mass,inertia,*self.initial_state)
         aerobody = AeroBody(body)
-        self.vehicle = AffectedBody(aerobody,[Combined()])
+        self.vehicle = AffectedBody(aerobody,[Combined(self.dT)])
 
         self.steps = 0
 
@@ -61,6 +61,16 @@ class MxsEnv(gym.Env):
             *self.initial_state[3]
         ]
 
+        # self.vehicle.set_state(np.array([[
+        #     *self.initial_state[0],
+        #     *self.initial_state[1],
+        #     *self.initial_state[2],
+        #     *self.initial_state[3]
+        # ]]).T)
+
+        self.elevator = np.radians(trim_points[self.selected_trim_point][1])
+        self.throttle = trim_points[self.selected_trim_point][2]
+
         self.steps = 0
 
         observation = self._get_obs()
@@ -68,7 +78,9 @@ class MxsEnv(gym.Env):
         return (observation,info) if return_info else observation
 
     def step(self, action):
-        self.vehicle.step(self.dT,action)
+        self.elevator = np.clip(self.elevator + action[0] * self.dT, np.radians(-30), np.radians(30))
+        self.throttle = action[1]
+        self.vehicle.step(self.dT,[0,self.elevator,self.throttle,0])
         observation = self._get_obs()
 
         reward, ep_done = self.reward_func(observation)
@@ -79,7 +91,7 @@ class MxsEnv(gym.Env):
     def render(self, mode):
         if mode == "ansi":
             elements = ", ".join([f"{v:.{4}f}" for v in self._get_obs()])
-            return f"[{elements},{self.vehicle.airstate[0]},{self.vehicle.airstate[2]}]"
+            return f"[{elements},{self.vehicle.airstate[0]},{self.vehicle.airstate[2]},{self.elevator},{self.throttle}]"
 
     def close(self):
         pass

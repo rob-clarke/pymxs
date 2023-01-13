@@ -76,8 +76,10 @@ def clamp(x,u,l):
     return max(min(x,u),l)
 
 class Combined:
-    def __init__(self):
-        self.time = 0
+    def __init__(self, timestep):
+        # self.time = 0
+        self.timestep = timestep
+        self.alpha_prev = None
 
     def get_elevator_moment_coeff_delta(self,airstate,rates,input):
         coeffs = [
@@ -136,7 +138,14 @@ class Combined:
         c_l = self.c_l_curve(alpha)
         c_d = self.c_d_curve(alpha)
         c_m = self.get_cm(alpha,c_l)
-        
+
+        alpha_dot = 0
+        if self.alpha_prev is None:
+            self.alpha_prev = alpha
+        else:
+            alpha_dot = (alpha - self.alpha_prev) / self.timestep
+            self.alpha_prev = alpha
+
         q = airstate[3]
         V = airstate[2]
         
@@ -157,11 +166,12 @@ class Combined:
         
         lift = q * Sw * c_l
         drag = q * Sw * c_d
-        moment = q * Sw * cw * (c_m + dc_m_elev) + m_t_aq
+        moment = q * Sw * cw * (c_m + dc_m_elev + -6.391 * alpha_dot) + m_t_aq
+        # moment = q * Sw * cw * (c_m + dc_m_elev) + m_t_aq
         
         thrust = self.get_thrust(V,input[2])
         # print(f"t: {self.time:.3f} T: {thrust:.3f}, V: {V:.3f}, Alpha: {alpha:.3f}, q: {q:.3f},  c_m: {c_m:.3f}, alpha_q: {alpha_q:.3f}, c_m_eff: {c_m+dc_m_elev:.3f}, moment: {moment:.3f}, dc_m_elev: {dc_m_elev:.3f}, mtaq: {m_t_aq:.3f}")
-        self.time += 0.01
+        # self.time += self.timestep
         x = thrust - drag * math.cos(alpha) + lift * math.sin(alpha)
         z = -lift * math.cos(alpha) - drag * math.sin(alpha)
         
@@ -183,15 +193,6 @@ class Combined:
 def sensible(array,dp=4):
     elements = ", ".join([f"{v:.{dp}f}" for v in array])
     return f"[{elements}]"
-
-body = Body(mass,inertia,position,velocity,attitude,rates)
-
-# aerobody = AeroBody(body,WindModel(),("StandardDensity",[]))
-# aerobody = AeroBody(body)
-aerobody = AeroBody(body,None,DensityModel())
-
-# vehicle = AffectedBody(aerobody,[Lift(),Drag(),Moment()])
-vehicle = AffectedBody(aerobody,[Combined()])
 
 def get_alpha_q(alpha,q,V=15):
     result = math.atan2( (-q*x_t + V*math.sin(alpha)), (V*math.cos(alpha)) )
@@ -335,8 +336,17 @@ if __name__ == "__main__":
     
     # sys.exit(0)
     
-    scale = 1
+    scale = 10
     deltaT = 0.01/scale
+
+    body = Body(mass,inertia,position,velocity,attitude,rates)
+
+    # aerobody = AeroBody(body,WindModel(),("StandardDensity",[]))
+    # aerobody = AeroBody(body)
+    aerobody = AeroBody(body,None,DensityModel())
+
+    # vehicle = AffectedBody(aerobody,[Lift(),Drag(),Moment()])
+    vehicle = AffectedBody(aerobody,[Combined(deltaT)])
 
     print(sensible(vehicle.statevector))
 
@@ -426,7 +436,7 @@ if __name__ == "__main__":
         body = Body(mass,inertia,position,velocity,attitude,rates)
         # aerobody = AeroBody(body,None,DensityModel())
         aerobody = AeroBody(body,None,("StandardDensity",[]))
-        vehicle = AffectedBody(aerobody,[Combined()])
+        vehicle = AffectedBody(aerobody,[Combined(deltaT)])
         
         start = time.process_time()
         while count < 3000*scale:
