@@ -101,10 +101,11 @@ if __name__ == "__main__":
   parser.add_argument("run_name")
 
   output_args = parser.add_argument_group("Output options")
-  output_args.add_argument("--no-save", dest="save", action="store_false")
+  output_args.add_argument("--no-save", dest="save", action="store_false", help="Don't save this run")
   output_args.add_argument("-d", "--directory", default="./runs", help="Destination for saving runs")
   output_args.add_argument("-o", "--output", action="store_true", help="Generate CSV for final output")
-  output_args.add_argument("--plot", action="store_true", help="Show plots at end of training. (Will act as if -o specified)")
+  output_args.add_argument("--plot", action="store_true", help="Show plots at end of training. (Will generate CSV as if -o specified)")
+  output_args.add_argument("--ignore-dirty", action="store_true", help="Ignore dirty tree when saving run")
 
   training_args = parser.add_argument_group("Training options")
   training_args.add_argument("-s", "--steps", help="Total timesteps to train for", type=int, default=500_000)
@@ -127,7 +128,12 @@ if __name__ == "__main__":
   if diff_result.returncode == 0:
     args.commit = git_sha
   else:
-    args.commit = f"{git_sha}-dirty"
+    if args.ignore_dirty or not args.save:
+      args.commit = f"{git_sha}-dirty"
+    else:
+      print("Error: Current tree not committed.")
+      print("Prevent saving with --no-save, or explicitly ignore dirty tree with --ignore-dirty")
+      sys.exit(1)
 
   # Attempt to load any waypoint file
   if args.waypoint_file:
