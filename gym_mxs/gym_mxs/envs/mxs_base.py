@@ -45,6 +45,7 @@ class MxsEnv(gym.Env):
         self.steps = 0
 
         self.reward_func = reward_func
+        self.reward_state = None
         self.timestep_limit = timestep_limit
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -72,6 +73,7 @@ class MxsEnv(gym.Env):
         self.throttle = trim_points[self.selected_trim_point][2]
 
         self.steps = 0
+        self.reward_state = None
 
         observation = self._get_obs()
         info = {}
@@ -83,7 +85,7 @@ class MxsEnv(gym.Env):
         self.vehicle.step(self.dT,[0,self.elevator,self.throttle,0])
         observation = self._get_obs()
 
-        reward, ep_done = self.reward_func(observation)
+        reward, ep_done, self.reward_state = self.reward_func(observation, self.reward_state)
         self.steps += 1
         done = ep_done or self.steps >= self.timestep_limit
         return observation, reward, done, {}
