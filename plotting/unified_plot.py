@@ -14,6 +14,14 @@ def get_eulerized(data):
         rot = Rotation.from_quat(np.array([data.qx,data.qy,data.qz,data.qw]).T)
         rot_euler = rot.as_euler('zyx', degrees=True)
         euler_df = pandas.DataFrame(data=rot_euler, columns=['yaw', 'pitch', 'roll'])
+        import copy
+        before = copy.deepcopy(euler_df.pitch)
+        # The conversion to Euler angles will convert inversions due to pitch into inversions due to roll
+        # This mess makes it so only the pitch changes
+        is_inverted = euler_df.yaw != 0
+        pitch_sign = np.copysign(1,euler_df.pitch)
+        euler_df.pitch = (1-is_inverted) * euler_df.pitch + \
+            is_inverted * (pitch_sign * 90 + (pitch_sign * 90 - euler_df.pitch))
     else:
         euler_df = data
     return euler_df
