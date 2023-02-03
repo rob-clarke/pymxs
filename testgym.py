@@ -155,4 +155,4 @@ if __name__ == "__main__":
     evaluate_model(model, env, output_file)
     
   if args.plot:
-    subprocess.call(["python", f"{os.path.dirname(os.path.realpath(__file__))}/plotting/unified_plot.py", output_file])
+    subprocess.call(["python", f"{os.path.dirname(os.path.realpath(__file__))}/plotting/unified_plot.py", "-d", args.directory, args.run_name])

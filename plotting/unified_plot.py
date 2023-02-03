@@ -1,4 +1,5 @@
 import sys
+import json
 
 import pandas
 import matplotlib.pyplot as plt
@@ -7,7 +8,17 @@ import numpy as np
 
 from scipy.spatial.transform import Rotation
 
-data = pandas.read_csv(sys.argv[1])
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("run_name", help="Name of run")
+parser.add_argument("-d", "--directory", help="Directory for runs", default="./runs")
+
+args = parser.parse_args()
+
+run_dir = f"{args.directory}/{args.run_name}"
+
+data = pandas.read_csv(f"{run_dir}/output.csv")
 
 def get_eulerized(data):
     if "qx" in data:
@@ -28,11 +39,20 @@ def get_eulerized(data):
 
 data_eul = get_eulerized(data)
 
+with open(f"{run_dir}/metadata.json") as f:
+    metadata = json.load(f)
+
 plt.plot(data.x, -data.z)
 plt.xlabel('x-position')
 plt.ylabel('z-position (inverted)')
 plt.axis('equal')
 plt.grid('both')
+
+if "waypoints" in metadata:
+    plt.scatter(
+        list(map(lambda p: p[0],metadata["waypoints"])),
+        list(map(lambda p: -p[1],metadata["waypoints"]))
+    )
 
 # plt.figure()
 fig, ax = plt.subplots(6,1, sharex=True)
