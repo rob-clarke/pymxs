@@ -12,7 +12,6 @@ import gym_mxs
 
 import subprocess
 
-from testgym import create_reward_func, evaluate_model
 
 if __name__ == "__main__":
   import argparse
@@ -38,6 +37,15 @@ if __name__ == "__main__":
       f,
       object_hook=lambda d: namedtuple('X', d.keys())(*d.values())
     )
+
+  # Attempt to checkout correct version of reward function
+  try:
+    subprocess.check_call(f"git show {run_args.commit}:testgym.py > testgym_previous.py", shell=True)
+    from testgym_previous import create_reward_func, evaluate_model
+    os.remove("testgym_previous.py")
+  except Exception as e:
+    print(f"Error importing previous version of reward function: {e}")
+    from testgym import create_reward_func, evaluate_model
 
   reward_func = create_reward_func(run_args)
 
