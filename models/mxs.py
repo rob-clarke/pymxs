@@ -34,11 +34,11 @@ def calc_state(alpha, airspeed, combined=True):
 
 # Trim points airspeed(m/s): (alpha(deg),elev(deg),throttle)
 trim_points = {
-    15.0: ( 2.0574563762079516,  -6.8727513934777225, 0.24329486036084907),
-    17.5: ( 1.0706920728883487,  -7.920398290900842,  0.32366463553969765),
-    20.0: ( 0.4300108890771458,  -8.847841922284317,  0.43160143104358356),
-    22.5: (-0.00919178945532153, -9.600216932754634,  0.5593081244658515 ),
-    25.0: (-0.3232762564889445,  -9.890387987246884,  0.700473854936423  )
+    15.0: ( 2.0575192094723063,   -3.8954256604237965, 0.24329511510533755),
+    17.5: ( 1.070826277509974,    -4.233529952589323,  0.32366453039697907),
+    20.0: ( 0.43018999494832727,  -4.673844770500285,  0.4316004497436157 ),
+    22.5: (-0.008982774862057782, -5.099339849609954,  0.559306094219063  ),
+    25.0: (-0.32304634892428574,  -5.213030835250511,  0.7004707831407953 )
 }
 
 
@@ -109,7 +109,7 @@ class Combined:
         throttle = input[2]
         aspd = clamp(airstate[2],10,22)
         return poly_manifold(elev,throttle,aspd,3,*coeffs)
-    
+
     def get_thrust(self,airspeed,throttle):
         return 1.1576e1 * throttle**2 \
             + -4.8042e-1 * throttle * airspeed \
@@ -117,22 +117,22 @@ class Combined:
             + 1.3490e1 * throttle \
             + 4.6518e-1 * airspeed \
             + -4.1090
-    
+
     def c_l_curve(self,alpha):
         return c_l_curve(alpha, *mxs_data.C_lift_complex)
-    
+
     def c_d_curve(self,alpha):
         return c_d_curve(alpha, *mxs_data.C_drag_complex)
-    
+
     def get_cm(self,alpha,c_lw):
         downwash_angle = 2 * c_lw / (math.pi * 4.54)
         alpha = alpha - downwash_angle + math.radians(-0.5)
         tail_lift = c_lta(alpha)
-        tail_drag = c_lta(alpha)
+        tail_drag = c_dta(alpha)
         resolved_moment = x_t * S_t * (tail_lift * math.cos(alpha) + tail_drag * math.sin(alpha))
         effective_cm = resolved_moment / (Sw*cw)
         return effective_cm
-    
+
     def get_effect(self,airstate,rates,input):
         alpha = airstate[0]
         c_l = self.c_l_curve(alpha)
@@ -148,42 +148,42 @@ class Combined:
 
         q = airstate[3]
         V = airstate[2]
-        
+
         downwash_angle = (2 * c_l / (math.pi * 4.54))
         alpha_t = alpha - downwash_angle + math.radians(-0.75)
         alpha_q = math.atan2( (-rates[1]*x_t + V*math.sin(alpha_t)), (V*math.cos(alpha_t)) )
         m_t_aq = x_t * q * S_t * (
             math.cos(alpha_q) * c_lta(alpha_q) \
             + math.sin(alpha_q) * c_dta(alpha_q) \
-            - math.cos(math.radians(alpha_t)) * c_lta(math.radians(alpha_t)) \
-            - math.sin(math.radians(alpha_t)) * c_dta(math.radians(alpha_t))
+            - math.cos(alpha_t) * c_lta(alpha_t) \
+            - math.sin(alpha_t) * c_dta(alpha_t)
         )
-        
+
         # m_t_aq = S(rates[1],-2,2) * x_t * q * S_t * (c_lta(alpha_q) - c_lta(alpha)) \
         #        + (1-S(rates[1],-2,2)) * -0.4 * rates[1]
-        
+
         dc_m_elev = self.get_elevator_moment_coeff_delta(airstate,rates,input)
-        
+
         lift = q * Sw * c_l
         drag = q * Sw * c_d
-        moment = q * Sw * cw * (c_m + dc_m_elev + -6.391 * alpha_dot) + m_t_aq
-        # moment = q * Sw * cw * (c_m + dc_m_elev) + m_t_aq
-        
+        # moment = q * Sw * cw * (c_m + dc_m_elev + -6.391 * alpha_dot) + m_t_aq
+        moment = q * Sw * cw * (c_m + dc_m_elev) + m_t_aq
+
         thrust = self.get_thrust(V,input[2])
         # print(f"t: {self.time:.3f} T: {thrust:.3f}, V: {V:.3f}, Alpha: {alpha:.3f}, q: {q:.3f},  c_m: {c_m:.3f}, alpha_q: {alpha_q:.3f}, c_m_eff: {c_m+dc_m_elev:.3f}, moment: {moment:.3f}, dc_m_elev: {dc_m_elev:.3f}, mtaq: {m_t_aq:.3f}")
         # self.time += self.timestep
         x = thrust - drag * math.cos(alpha) + lift * math.sin(alpha)
         z = -lift * math.cos(alpha) - drag * math.sin(alpha)
-        
+
         # Force and moment fits are found relative to the loadcell point
         # Computed effect forces/moments should be supplied about CG
         #x_cg = 0.03 # m
         #z_cg = -0.016 # m Load cell reference point was 16mm below spar centreline
-        
+
         x_cg = 0.03 # m
         z_cg = 0 # m
         moment = moment - z * x_cg + x * z_cg
-        
+
         return (
             Force.body([x,0.0,z]),
             Torque.body([0,moment,0])
@@ -217,10 +217,10 @@ def get_cmqd(alpha, q, V=15):
 
 def get_cmqd_dw(alpha, q, V=15):
     dyn_press = 0.5 * 1.225 * V**2
-    
+
     derate = True
 
-    downwash_angle = 2 * Combined().c_l_curve(alpha) / (math.pi * 4.54) * math.cos(alpha)
+    downwash_angle = 2 * Combined(0.01).c_l_curve(alpha) / (math.pi * 4.54) * math.cos(alpha)
     downwash_angle = downwash_angle * ( S(alpha,-math.pi/4,math.pi/4) if derate else 1.0 )
     alpha_t = alpha - downwash_angle + math.radians(-0.5)
 
@@ -235,10 +235,10 @@ def get_cmqd_dw_vt(alpha, q, V=15):
     V_t = math.sqrt((-q*x_t + V*math.sin(alpha))**2 + (V*math.cos(alpha))**2)
     dyn_press = 0.5 * 1.225 * V**2
     dyn_press_tail = 0.5 * 1.225 * V_t**2
-    
+
     derate = False
 
-    downwash_angle = 2 * Combined().c_l_curve(alpha) / (math.pi * 4.54) * math.cos(alpha)
+    downwash_angle = 2 * Combined(0.01).c_l_curve(alpha) / (math.pi * 4.54) * math.cos(alpha)
     downwash_angle = downwash_angle * ( S(alpha,-math.pi/4,math.pi/4) if derate else 1.0 )
     alpha_t = alpha - downwash_angle + math.radians(-0.5)
 
@@ -269,73 +269,107 @@ def calc_high_alpha_cmq_eff(q, V=15):
 
 # print(vehicle.airstate)
 if __name__ == "__main__":
-    # import sys
-    # import numpy as np
-    # import matplotlib.pyplot as plt
-    
-    # alphas = np.linspace(-180,180,500)
-    
-    # # cds = np.zeros_like(alphas)
-    # # for i,alpha in enumerate(alphas):
-    # #     cds[i] = c_dta(math.radians(alpha))
-    # # plt.plot(alphas,cds)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--plot", action="store_true")
+    parser.add_argument("--trim", action="store_true")
+    parser.add_argument("output_file")
 
-    # qs = [30] #[1, 30, 60] #np.linspace(1,60,3)
-    # cmqs = np.zeros((len(qs),len(alphas),4))
-    # c_ltas = np.zeros((len(qs),len(alphas),2))
-    # alpha_qs = np.zeros((len(qs),len(alphas)))
-    
-    # for j,alpha in enumerate(alphas):
-    #     for i,q in enumerate(qs):
-    #         cmqs[i,j,0] = get_cmq(math.radians(alpha),math.radians(q))
-    #         cmqs[i,j,1] = get_cmqd(math.radians(alpha),math.radians(q))
-    #         cmqs[i,j,2] = get_cmqd_dw(math.radians(alpha),math.radians(q))
-    #         cmqs[i,j,3] = get_cmqd_dw_vt(math.radians(alpha),math.radians(q))
-    #         alpha_q = get_alpha_q(math.radians(alpha),math.radians(q))
-    #         c_ltas[i,j,0] = c_lta(alpha_q) - c_lta(math.radians(alpha))
-    #         c_ltas[i,j,1] = math.cos(alpha_q) * c_lta(alpha_q) + math.sin(alpha_q) * c_dta(alpha_q) \
-    #                         - math.cos(math.radians(alpha)) * c_lta(math.radians(alpha)) - math.sin(math.radians(alpha)) * c_dta(math.radians(alpha))
-    #         alpha_qs[i,j] = alpha_q
+    args = parser.parse_args()
 
-    # static_cmq_effs = [calc_high_alpha_cmq_eff(math.radians(q)) for q in qs]
+    if args.plot:
+        import sys
+        import numpy as np
+        import matplotlib.pyplot as plt
 
-    # colours = ['k','g','b']
+        alphas = np.linspace(-180,180,500)
 
-    # for i,q in enumerate(qs):
-    #     # plt.plot(alphas,cmqs[i,:,0])
-    #     # plt.plot(alphas,cmqs[i,:,1])
-    #     plt.plot(alphas,cmqs[i,:,2],f"{colours[i]}:")
-    #     plt.plot(alphas,cmqs[i,:,3],f"{colours[i]}-")
-    #     plt.plot([-180,180], [static_cmq_effs[i] for _ in [0,0]],f"{colours[i]}--")
-    
-    # plt.legend(["Constant dynamic pressure", "Varied dynamic pressure", "Flat plate value"])
-    
-    # #plt.legend(list(map(lambda v: str(v),qs)))
-    
-    # # ax = plt.gca()
-    # # leg = ax.get_legend()
-    # # for i,_ in enumerate(qs):
-    # #     leg.legendHandles[i].set_color(colours[i])
-    # #     leg.legendHandles[i].set_dashes([])
-    # plt.xlabel("Angle of attack (deg)")
-    # plt.ylabel("$C_{Mq,eff}$")
-    # plt.grid(True,'both')
-    
-    # plt.figure()
-    # for i,q in enumerate(qs):
-    #     plt.plot(alphas,np.degrees(alpha_qs[i,:]))
-    # plt.legend(list(map(lambda v: str(v),qs)))
-    
-    # plt.figure()
-    # for i,q in enumerate(qs):
-    #     # plt.plot(alphas,c_ltas[i,:,0])
-    #     plt.plot(alphas,c_ltas[i,:,1])
-    # plt.legend(list(map(lambda v: str(v),qs)))
-    
-    # plt.show()
-    
-    # sys.exit(0)
-    
+        # cds = np.zeros_like(alphas)
+        # for i,alpha in enumerate(alphas):
+        #     cds[i] = c_dta(math.radians(alpha))
+        # plt.plot(alphas,cds)
+
+        combined = Combined(0.01)
+
+        cms = np.zeros((len(alphas)))
+        cmes = np.zeros((len(alphas)))
+
+        for (i,alpha) in enumerate(alphas):
+            cms[i] = combined.get_cm(np.radians(alpha),combined.c_l_curve(np.radians(alpha)))
+            cmes[i] = cms[i] + combined.get_elevator_moment_coeff_delta([0,0,15],[],[0,np.radians(30),0])
+        plt.plot(alphas, cms)
+        plt.plot(alphas, cmes)
+        plt.xlabel("alpha (deg)")
+        plt.ylabel("c_m")
+        plt.legend(["cm","cm_total"])
+        plt.grid(True,'both')
+
+        plt.figure()
+
+        # plt.show()
+        # sys.exit(0)
+
+        qs = [30] #[1, 30, 60] #np.linspace(1,60,3)
+        cmqs = np.zeros((len(qs),len(alphas),4))
+        c_ltas = np.zeros((len(qs),len(alphas),2))
+        alpha_qs = np.zeros((len(qs),len(alphas)))
+
+        for j,alpha in enumerate(alphas):
+            for i,q in enumerate(qs):
+                cmqs[i,j,0] = get_cmq(math.radians(alpha),math.radians(q))
+                cmqs[i,j,1] = get_cmqd(math.radians(alpha),math.radians(q))
+                cmqs[i,j,2] = get_cmqd_dw(math.radians(alpha),math.radians(q))
+                cmqs[i,j,3] = get_cmqd_dw_vt(math.radians(alpha),math.radians(q))
+                alpha_q = get_alpha_q(math.radians(alpha),math.radians(q))
+                c_ltas[i,j,0] = c_lta(alpha_q) - c_lta(math.radians(alpha))
+                c_ltas[i,j,1] = math.cos(alpha_q) * c_lta(alpha_q) + math.sin(alpha_q) * c_dta(alpha_q) \
+                                - math.cos(math.radians(alpha)) * c_lta(math.radians(alpha)) - math.sin(math.radians(alpha)) * c_dta(math.radians(alpha))
+                alpha_qs[i,j] = alpha_q
+
+        static_cmq_effs = [calc_high_alpha_cmq_eff(math.radians(q)) for q in qs]
+
+        colours = ['k','g','b']
+
+        for i,q in enumerate(qs):
+            # plt.plot(alphas,cmqs[i,:,0])
+            # plt.plot(alphas,cmqs[i,:,1])
+            plt.plot(alphas,cmqs[i,:,2],f"{colours[i]}:")
+            plt.plot(alphas,cmqs[i,:,3],f"{colours[i]}-")
+            plt.plot([-180,180], [static_cmq_effs[i] for _ in [0,0]],f"{colours[i]}--")
+
+        plt.legend(["Constant dynamic pressure", "Varied dynamic pressure", "Flat plate value"])
+
+        #plt.legend(list(map(lambda v: str(v),qs)))
+
+        # ax = plt.gca()
+        # leg = ax.get_legend()
+        # for i,_ in enumerate(qs):
+        #     leg.legendHandles[i].set_color(colours[i])
+        #     leg.legendHandles[i].set_dashes([])
+        plt.xlabel("Angle of attack (deg)")
+        plt.ylabel("$C_{Mq,eff}$")
+        plt.grid(True,'both')
+
+        # plt.figure()
+        # for i,q in enumerate(qs):
+        #     plt.plot(alphas,np.degrees(alpha_qs[i,:]))
+        # plt.legend(list(map(lambda v: str(v),qs)))
+        # plt.xlabel("alpha (deg)")
+        # plt.ylabel("alpha_q")
+
+        plt.figure()
+        for i,q in enumerate(qs):
+            # plt.plot(alphas,c_ltas[i,:,0])
+            plt.plot(alphas,c_ltas[i,:,1])
+        plt.legend(list(map(lambda v: str(v),qs)))
+        plt.xlabel("alpha (deg)")
+        plt.ylabel("c_lta")
+
+        plt.show()
+
+        sys.exit(0)
+
+
     scale = 10
     deltaT = 0.01/scale
 
@@ -348,14 +382,34 @@ if __name__ == "__main__":
     # vehicle = AffectedBody(aerobody,[Lift(),Drag(),Moment()])
     vehicle = AffectedBody(aerobody,[Combined(deltaT)])
 
+    if args.trim:
+        import inspect, os, sys
+        currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+        parentdir = os.path.dirname(currentdir)
+        sys.path.insert(0, os.path.join(parentdir,"pyaerso","utils"))
+
+        from calc_trim import get_trim_condition
+        trim_states = {}
+        airspeeds = [15, 17.5, 20, 22.5, 25]
+    
+        for airspeed in airspeeds:
+            trim_states[airspeed] = get_trim_condition(vehicle, airspeed, debug=True)
+        
+        print("----- Results -----")
+        print("{ airspeed: (alpha(deg), elevator(deg), throttle) ... }")
+        import pprint
+        
+        pprint.pprint(trim_states)
+        sys.exit(0)
+
     print(sensible(vehicle.statevector))
 
     import sys
     import time
 
     outfile = None
-    if len(sys.argv) > 1:
-        outfile = open(sys.argv[1],"w")
+    if args.output_file:
+        outfile = open(args.output_file,"w")
         outfile.write("time,x,y,z,u,v,w,qx,qy,qz,qw,p,q,r,alpha,elevator\n")
 
     samples = 1
@@ -371,7 +425,7 @@ if __name__ == "__main__":
             return math.radians(TRIM_ELEVATOR+5.0), TRIM_THROTTLE
         if count < 600*scale:
             return math.radians(TRIM_ELEVATOR-5.0), TRIM_THROTTLE
-        
+
         return math.radians(TRIM_ELEVATOR), TRIM_THROTTLE
 
     def get_loop_input(count):
@@ -405,13 +459,13 @@ if __name__ == "__main__":
         #     return math.radians(TRIM_ELEVATOR+5.0), 0.65
 
         return math.radians(TRIM_ELEVATOR), TRIM_THROTTLE
-    
+
     def constant(level):
         class Constant:
             def __call__(self, t):
                 return level
         return Constant
-    
+
     def pulse(amplitude, t_start, period):
         class Pulse:
             def __call__(self, t):
@@ -420,7 +474,7 @@ if __name__ == "__main__":
                 if t < (t_start + period):
                     return amplitude
                 return 0
-    
+
     def doublet(amplitude, t_start, period):
         start_pulse = pulse(amplitude, t_start, period/2)
         end_pulse = pulse(amplitude, t_start + period/2, period/2)
@@ -432,12 +486,12 @@ if __name__ == "__main__":
     for i in range(samples):
         count = 0
         simtime = 0
-        
+
         body = Body(mass,inertia,position,velocity,attitude,rates)
         # aerobody = AeroBody(body,None,DensityModel())
         aerobody = AeroBody(body,None,("StandardDensity",[]))
         vehicle = AffectedBody(aerobody,[Combined(deltaT)])
-        
+
         start = time.process_time()
         while count < 3000*scale:
             elevator, throttle = get_doublet_elevator_input(count)

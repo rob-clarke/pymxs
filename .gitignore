@@ -1,3 +1,4 @@
 /test_data/
 **/__pycache__
 /runs/
+*.png
