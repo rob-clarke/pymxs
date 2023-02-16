@@ -105,7 +105,7 @@ def create_reward_func(args):
       return 10_000, True, reward_state
 
     if reward_state >= 250:
-      return 0, False, None
+      return 0, True, None
     
     # Reward progress to hover
     q_progress = 1 / (1 + abs(q))
@@ -113,7 +113,7 @@ def create_reward_func(args):
     u_progress = 1 / (1 + abs(u))
     w_progress = 1 / (1 + abs(w))
     hover_progress = q_progress * pitch_progress * u_progress * w_progress
-    return -100 + 100 * hover_progress, True, None
+    return -100 + 100 * hover_progress, False, reward_state
 
   if not hasattr(args, "manoeuvre"):
     manoeuvre = "descent"
