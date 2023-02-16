@@ -102,18 +102,18 @@ def create_reward_func(args):
 
     if is_hover:
       # Reward is based on hover position
-      return 100, True, reward_state
+      return 10_000, True, reward_state
 
     if reward_state >= 250:
-      # Time limited episode, reward progress to hover
-      q_progress = 1 / (1 + abs(q))
-      pitch_progress = 1 / (1+abs(np.radians(90) - pitch))
-      u_progress = 1 / (1 + abs(u))
-      w_progress = 1 / (1 + abs(w))
-      hover_progress = q_progress * pitch_progress * u_progress * w_progress
-      return 100 * hover_progress, True, None
-
-    return 0, False, reward_state
+      return 0, False, None
+    
+    # Reward progress to hover
+    q_progress = 1 / (1 + abs(q))
+    pitch_progress = 1 / (1+abs(np.radians(90) - pitch))
+    u_progress = 1 / (1 + abs(u))
+    w_progress = 1 / (1 + abs(w))
+    hover_progress = q_progress * pitch_progress * u_progress * w_progress
+    return -100 + 100 * hover_progress, True, None
 
   if not hasattr(args, "manoeuvre"):
     manoeuvre = "descent"
