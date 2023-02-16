@@ -21,6 +21,23 @@ DEFAULT_TIME_LIMIT = 1000 # s*100
 DEFAULT_CLIMB_WEIGHT = 1
 DEFAULT_PITCH_WEIGHT = 0
 
+def get_pitch(qx,qy,qz,qw):
+  if True:
+    # Can't use scipy if 'jit'ting
+    rot = Rotation.from_quat(np.array([qx,qy,qz,qw]).T)
+    [yaw, pitch, roll] = rot.as_euler('zyx', degrees=False)
+    # print([yaw,pitch,roll])
+    if yaw != 0:
+      if pitch > 0:
+        pitch = np.pi/2 + (np.pi/2 - pitch)
+      else:
+        pitch = -np.pi/2 + (-np.pi/2 - pitch)
+  if False:
+    sinp = np.sqrt(1 + 2 * (qw*qy - qx*qz))
+    cosp = np.sqrt(1 - 2 * (qw*qy - qx*qz))
+    pitch = 2 * np.arctan2(sinp, cosp) - np.pi / 2
+  return pitch
+
 def create_reward_func(args):
   # Split these out so numba can jit the reward function
   u_limit = args.u_limit
@@ -31,7 +48,7 @@ def create_reward_func(args):
   waypoints = args.waypoints
 
   # @jit
-  def reward_func(obs, max_z):
+  def descent_reward_func(obs, max_z):
     [x,y,z, u,v,w, qx,qy,qz,qw, p,q,r] = obs
 
     if max_z == None:
@@ -39,20 +56,7 @@ def create_reward_func(args):
     # Update max_z
     max_z = max(z, max_z)
 
-    if True:
-      # Can't use scipy if 'jit'ting
-      rot = Rotation.from_quat(np.array([qx,qy,qz,qw]).T)
-      [yaw, pitch, roll] = rot.as_euler('zyx', degrees=False)
-      # print([yaw,pitch,roll])
-      if yaw != 0:
-        if pitch > 0:
-          pitch = np.pi/2 + (np.pi/2 - pitch)
-        else:
-          pitch = -np.pi/2 + (-np.pi/2 - pitch)
-    if False:
-      sinp = np.sqrt(1 + 2 * (qw*qy - qx*qz))
-      cosp = np.sqrt(1 - 2 * (qw*qy - qx*qz))
-      pitch = 2 * np.arctan2(sinp, cosp) - np.pi / 2
+    pitch = get_pitch(qx,qy,qz,qw)
 
     if x < 0 or u > u_limit or u < 0 or pitch > np.radians(89) or pitch < np.radians(-270):
       return -1000, True, max_z
@@ -75,8 +79,51 @@ def create_reward_func(args):
         reward += waypoint_weight / (np.hypot(x-wp_x, z-wp_z) + 0.01)
 
     return reward, False, max_z
-  
-  return reward_func
+
+  def within(value, lower, upper):
+    if value < lower:
+      return False
+    if value > upper:
+      return False
+    return True
+
+  def hover_reward_func(obs, reward_state):
+    if reward_state is None:
+      reward_state = 0
+    reward_state += 1
+
+    [x,y,z, u,v,w, qx,qy,qz,qw, p,q,r] = obs
+    pitch = get_pitch(qx,qy,qz,qw)
+
+    is_hover = within(q, -0.01, 0.01) \
+      and within(pitch, np.radians(85), np.radians(95)) \
+      and within(u, -0.1, 0.1) \
+      and within(w, -0.1, 0.1) \
+
+    if is_hover:
+      # Reward is based on hover position
+      return 100, True, reward_state
+
+    if reward_state >= 250:
+      # Time limited episode, reward progress to hover
+      q_progress = 1 / (1 + abs(q))
+      pitch_progress = 1 / (1+abs(np.radians(90) - pitch))
+      u_progress = 1 / (1 + abs(u))
+      w_progress = 1 / (1 + abs(w))
+      hover_progress = q_progress * pitch_progress * u_progress * w_progress
+      return 100 * hover_progress, True, None
+
+    return 0, False, reward_state
+
+  if not hasattr(args, "manoeuvre"):
+    manoeuvre = "descent"
+  else:
+    manoeuvre = args.manoeuvre
+
+  if manoeuvre == "hover":
+    return hover_reward_func
+  else:
+    return descent_reward_func
 
 def evaluate_model(model, env, output_path=False):
   obs = env.reset()
@@ -118,6 +165,7 @@ if __name__ == "__main__":
   reward_args.add_argument("-p", "--pitch-weight", help="Weight for pitch cost", type=float, default=DEFAULT_PITCH_WEIGHT)
   reward_args.add_argument("-w", "--waypoint-weight", help="Weight for waypoints", type=float, default=0)
   reward_args.add_argument("-f", "--waypoint-file", help="File for waypoints", default=0)
+  reward_args.add_argument("-m", "--manoeuvre", help="Manoeuvre to use", type=str)
 
   args = parser.parse_args()
 

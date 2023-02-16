@@ -40,7 +40,10 @@ if __name__ == "__main__":
 
   # Attempt to checkout correct version of reward function
   try:
-    subprocess.check_call(f"git show {run_args.commit}:testgym.py > testgym_previous.py", shell=True)
+    commit = run_args.commit
+    if "dirty" in commit:
+      commit = commit[0:-6] # Remove -dirty
+    subprocess.check_call(f"git show {commit}:testgym.py > testgym_previous.py", shell=True)
     from testgym_previous import create_reward_func, evaluate_model
     os.remove("testgym_previous.py")
   except Exception as e:
