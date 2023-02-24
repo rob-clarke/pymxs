@@ -45,7 +45,10 @@ def create_reward_func(args):
   pitch_weight = args.pitch_weight
   climb_weight = args.climb_weight
   waypoint_weight = args.waypoint_weight
-  waypoints = args.waypoints
+  if hasattr(args, "waypoints"):
+    waypoints = args.waypoints
+  else:
+    waypoints = []
 
   # @jit
   def descent_reward_func(obs, max_z):
