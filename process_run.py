@@ -24,6 +24,7 @@ if __name__ == "__main__":
   output_args.add_argument("-d", "--directory", default="./runs", help="Destination for saving runs")
   output_args.add_argument("-o", "--output", action="store_true", help="Generate CSV for final output")
   output_args.add_argument("--plot", action="store_true", help="Show plots at end of training. (Will act as if -o specified)")
+  output_args.add_argument("--save-plots", action="store_true", help="Save generated plots. (Will act as if --plot and -o are specified)")
 
   args = parser.parse_args()
 
@@ -44,23 +45,33 @@ if __name__ == "__main__":
     if "dirty" in commit:
       commit = commit[0:-6] # Remove -dirty
     subprocess.check_call(f"git show {commit}:testgym.py > testgym_previous.py", shell=True)
-    from testgym_previous import create_reward_func, evaluate_model
+    from testgym_previous import create_reward_func
     os.remove("testgym_previous.py")
   except Exception as e:
     print(f"Error importing previous version of reward function: {e}")
-    from testgym import create_reward_func, evaluate_model
+    from testgym import create_reward_func
+  from testgym import evaluate_model
 
   reward_func = create_reward_func(run_args)
 
   model = MlAlg.load(f"{run_dir}/model.zip")
   env = gym.make('gym_mxs/MXS-v0', reward_func=reward_func, timestep_limit=1000)
 
-  if args.output or args.plot:
+  if args.output or args.plot or args.save_plots:
     output_file = f"{run_dir}/output.csv"
     obs, reward, done, info, simtime = evaluate_model(model, env, output_file)
 
     print(f"{obs=}")
     print(f"{reward=}")
     
-  if args.plot:
-    subprocess.call(["python", f"{os.path.dirname(os.path.realpath(__file__))}/plotting/unified_plot.py", "-d", args.directory, args.run_name])
+  if args.plot or args.save_plots:
+    plot_command = [
+      "python",
+      f"{os.path.dirname(os.path.realpath(__file__))}/plotting/unified_plot.py",
+      "-d", args.directory,
+      args.run_name
+    ]
+    if args.save_plots:
+      plot_command.append("--save")
+
+    subprocess.call(plot_command)

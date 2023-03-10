@@ -136,7 +136,7 @@ def evaluate_model(model, env, output_path=False):
     if outfile:
       outfile.write("time,x,y,z,u,v,w,qx,qy,qz,qw,p,q,r,alpha,airspeed,elevator,throttle\n")
     while not done:
-      action, _state = model.predict(obs)
+      action, _state = model.predict(obs, deterministic=True)
       obs, reward, done, info = env.step(action)
       if outfile:
         outfile.write(f"{simtime},{env.render('ansi')[1:-1]}\n")
