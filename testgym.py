@@ -1,6 +1,7 @@
 import sys
 sys.path.insert(1, '/home/rc13011/projects/mxs/pymxs/models')
 
+import datetime
 import json
 import os
 import subprocess
@@ -144,11 +145,25 @@ def evaluate_model(model, env, output_path=False):
 
   return obs, reward, done, info, simtime
 
+class LongitudinalStateWrapper(gym.ObservationWrapper):
+  def __init__(self, env) -> None:
+    super().__init__(env)
+    self.observation_space = gym.spaces.Box(
+            low=np.float32(-np.inf),
+            high=np.float32(np.inf),
+            shape=(7,),
+            dtype=np.float32
+        )
+
+  def observation(self, obs):
+    #           x       z       u       w      qy      qw        q
+    return [obs[0], obs[2], obs[3], obs[5], obs[7], obs[9], obs[11]]
+
 if __name__ == "__main__":
   import argparse
 
   parser = argparse.ArgumentParser()
-  parser.add_argument("run_name")
+  parser.add_argument("-n", "--run_name", help="Name for run. If not set, current timestamp will be used")
 
   output_args = parser.add_argument_group("Output options")
   output_args.add_argument("--no-save", dest="save", action="store_false", help="Don't save this run")
@@ -160,6 +175,7 @@ if __name__ == "__main__":
   training_args = parser.add_argument_group("Training options")
   training_args.add_argument("-s", "--steps", help="Total timesteps to train for", type=int, default=500_000)
   training_args.add_argument("-l", "--episode-length", help="Episode timestep limit", type=int, default=DEFAULT_TIME_LIMIT)
+  training_args.add_argument("--use-reduced-observation", help="Use only longitudinal state observations", action="store_true")
 
   reward_args = parser.add_argument_group("Reward function options")
   reward_args.add_argument("-x", "--x-limit", help="x coordinate limit", type=float, default=DEFAULT_X_LIMIT)
@@ -171,6 +187,9 @@ if __name__ == "__main__":
   reward_args.add_argument("-m", "--manoeuvre", help="Manoeuvre to use", type=str)
 
   args = parser.parse_args()
+  
+  if args.run_name is None:
+    args.run_name = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
 
   # Check if on clean commit
   diff_result = subprocess.run(["git", "diff", "-s", "--exit-code", "HEAD"])
@@ -196,6 +215,8 @@ if __name__ == "__main__":
   reward_func = create_reward_func(args)
 
   env = gym.make('gym_mxs/MXS-v0', reward_func=reward_func, timestep_limit=1000)
+  if args.use_reduced_observation:
+    env = LongitudinalStateWrapper(env)
 
   model = MlAlg("MlpPolicy", env, verbose=1)
   model.learn(total_timesteps=args.steps)
