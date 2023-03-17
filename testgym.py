@@ -1,6 +1,7 @@
 import sys
 sys.path.insert(1, '/home/rc13011/projects/mxs/pymxs/models')
 
+import copy
 import datetime
 import json
 import os
@@ -159,6 +160,72 @@ class LongitudinalStateWrapper(gym.ObservationWrapper):
     #           x       z       u       w      qy      qw        q
     return [obs[0], obs[2], obs[3], obs[5], obs[7], obs[9], obs[11]]
 
+class MultiManoeuvreWrapper(gym.Wrapper):
+  def __init__(self, env, manoeuvres, reward_function_factory, args) -> None:
+    super().__init__(env)
+
+    def get_modargs(manoeuvre):
+      args_copy = copy.copy(args)
+      args_copy.manoeuvre = manoeuvre
+      return args_copy
+
+    self.reward_functions = [
+      reward_function_factory(modargs) for modargs in map(get_modargs, manoeuvres)
+    ]
+
+    self.manoeuvre_count = len(manoeuvres)
+    self.manoeuvre_index = 0
+
+    self.observation_space = gym.spaces.Box(
+      low=np.float32(-np.inf),
+      high=np.float32(np.inf),
+      shape=(self.observation_space.shape[0] + self.manoeuvre_count,),
+      dtype=np.float32
+    )
+
+    # Override the base class reward function
+    # Just passes through reward_state unmodified
+    self.unwrapped.reward_func = lambda obs, reward_state: (0, False, reward_state)
+
+  def _augment_obs(self, obs):
+    # Modify the wrapped observation to indicate the current manoeuvre
+    hot_one_manoeuvre = [0] * self.manoeuvre_count
+    hot_one_manoeuvre[self.manoeuvre_index] = 1
+
+    return [*obs, *hot_one_manoeuvre]
+
+  def step(self, action):
+    # Step the underlying environment
+    # Reward function overridden to return ep_done = False
+    # Means done is just timestep check
+    obs, reward, base_done, info = self.env.step(action)
+
+    # Add hotone manoeuvre to obs
+    observation = self._augment_obs(obs)
+
+    # Select the reward function based on the manoeuvre
+    reward_func = self.reward_functions[self.manoeuvre_index]
+
+    # Get the unwrapped observation to pass to the reward func
+    base_obs = self.unwrapped._get_obs()
+    reward, ep_done, self.unwrapped.reward_state = reward_func(
+      base_obs,
+      self.unwrapped.reward_state
+    )
+
+    # The done returned from step may be using the wrong reward function
+    done = ep_done or base_done
+    return observation, reward, done, info
+
+  def reset(self, *args):
+    obs = self.env.reset(*args)
+    # End of episode, move to next manoeuvre
+    self.manoeuvre_index = (self.manoeuvre_index + 1) % self.manoeuvre_count
+    # Add hotone manoeuvre to obs
+    observation = self._augment_obs(obs)
+    return observation
+
+
 if __name__ == "__main__":
   import argparse
 
@@ -185,6 +252,7 @@ if __name__ == "__main__":
   reward_args.add_argument("-w", "--waypoint-weight", help="Weight for waypoints", type=float, default=0)
   reward_args.add_argument("-f", "--waypoint-file", help="File for waypoints", default=0)
   reward_args.add_argument("-m", "--manoeuvre", help="Manoeuvre to use", type=str)
+  reward_args.add_argument("--multi-manoeuvre", help="Train for multiple manoeuvres at once", action="store_true")
 
   args = parser.parse_args()
   
@@ -217,6 +285,14 @@ if __name__ == "__main__":
   env = gym.make('gym_mxs/MXS-v0', reward_func=reward_func, timestep_limit=1000)
   if args.use_reduced_observation:
     env = LongitudinalStateWrapper(env)
+
+  if args.multi_manoeuvre:
+    env = MultiManoeuvreWrapper(
+      env,
+      ["hover", "descent"],
+      create_reward_func,
+      args
+    )
 
   model = MlAlg("MlpPolicy", env, verbose=1)
   model.learn(total_timesteps=args.steps)
