@@ -10,19 +10,6 @@ import numpy as np
 
 from scipy.spatial.transform import Rotation
 
-import argparse
-
-parser = argparse.ArgumentParser()
-parser.add_argument("run_name", help="Name of run")
-parser.add_argument("-d", "--directory", help="Directory for runs", default="./runs")
-parser.add_argument("--save", action="store_true", help="Save the output plots")
-
-args = parser.parse_args()
-
-run_dir = os.path.join(args.directory, args.run_name)
-
-data = pandas.read_csv(os.path.join(run_dir, "output.csv"))
-
 PLANE_OUTLINE_PATH = "M -8.4344006,0.8833226 L -3.6174367,1.4545926 C -2.6957014,1.5861425 -1.2977255,1.7000225 -0.44895008,0.98453256 C 0.97534922,0.9358126 2.1554971,0.9295626 3.4694746,0.8473026 C 3.4694746,0.8473026 4.1040207,0.8167026 4.1204559,0.5018026 C 4.1306045,0.3072626 4.2764544,-1.2268074 1.7485665,-1.3031174 L 1.7604066,-1.0355474 L 1.3209316,-1.0233574 L 1.3822972,-1.7538274 C 1.9074643,-1.7412074 2.0141441,-2.5891474 1.4111688,-2.6446878 C 0.80819248,-2.7002378 0.8023354,-1.8387774 1.1839183,-1.7720774 L 1.0908357,-1.0522274 L -5.2189818,-0.91913738 L -12.198397,-0.80283738 C -12.198397,-0.80283738 -12.820582,-0.84082738 -12.643322,-0.31380735 C -12.466063,0.2132026 -11.622877,3.1026526 -11.622877,3.1026526 L -10.120232,3.1500026 C -10.120232,3.1500026 -9.8463164,3.1552526 -9.6753635,2.8748926 C -9.5044154,2.5944926 -8.4343678,0.8834126 -8.4343678,0.8834126 Z"
 MAIN_WING_PATH="M 0.32346345,0.1815526 C 1.8962199,0.1638926 1.9691414,-0.33848735 0.34369001,-0.39724735 C -2.0368286,-0.46197735 -3.4920188,-0.15280735 -3.3975903,-0.13907735 C -1.5720135,0.1264326 -0.81500941,0.1943226 0.32346345,0.1815526 Z"
 TAIL_PLANE_PATH="M -8.9838929,0.4470726 C -7.9395132,0.4475726 -7.8954225,0.0758826 -8.975461,0.01829265 C -10.557021,-0.05024735 -11.520801,0.1663226 -11.457966,0.1773326 C -10.24323,0.3898926 -9.739887,0.4467426 -8.9838897,0.4471126 Z"
@@ -91,77 +78,161 @@ def get_eulerized(data):
         euler_df = data
     return euler_df
 
-data_eul = get_eulerized(data)
+def plot_vehicle(ax, data, data_eul):
+    last_pos = [10_000, 10_000]
+    for i in range(len(data.index)):
+        if i % 10 != 0:
+            continue
+        deltaPos = np.hypot(last_pos[0] - data.x[i], last_pos[1] - data.z[i])
+        if deltaPos < 0.5:
+            continue
+        draw_vehicle(ax, data.x[i], -data.z[i], np.radians(data_eul.pitch[i]), data.elevator[i])
+        last_pos = [data.x[i], data.z[i]]
 
-with open(f"{run_dir}/metadata.json") as f:
-    metadata = json.load(f)
+def plot_data(data, data_eul, fmt="", pathax=None, traceaxs=None):
+    if pathax is None:
+        plt.figure()
+        pathax = plt.axes()
+        plt.minorticks_on()
+        plt.grid(True, 'both')
+        plt.xlabel('x-position')
+        plt.ylabel('z-position (inverted)')
+        plt.axis('equal')
 
-plt.minorticks_on()
-plt.grid(True, 'both')
+    pathax.plot(data.x, -data.z, fmt)
+    plot_vehicle(pathax, data, data_eul)
 
-plt.plot(data.x, -data.z)
-plt.xlabel('x-position')
-plt.ylabel('z-position (inverted)')
-plt.axis('equal')
+    if traceaxs is None:
+        fig, traceaxs = plt.subplots(6,1, sharex=True)
+        traceaxs[-1].set_xlabel('Time (s)')
+        traceaxs[-1].set_xlim(0.0, None)
 
-ax = plt.gca()
-last_pos = [10_000, 10_000]
-for i in range(len(data.index)):
-    if i % 10 != 0:
-        continue
-    deltaPos = np.hypot(last_pos[0] - data.x[i], last_pos[1] - data.z[i])
-    if deltaPos < 0.5:
-        continue
-    draw_vehicle(ax, data.x[i], -data.z[i], np.radians(data_eul.pitch[i]), data.elevator[i])
-    last_pos = [data.x[i], data.z[i]]
+        fig.set_size_inches(6, 6)
+        fig.align_ylabels()
+        fig.tight_layout()
 
-if "waypoints" in metadata:
-    plt.scatter(
-        list(map(lambda p: p[0],metadata["waypoints"])),
-        list(map(lambda p: -p[1],metadata["waypoints"]))
-    )
+    ylabel_common_args = {
+        "rotation": "horizontal",
+        "horizontalalignment": "right",
+    }
 
-plt.tight_layout()
-position_fig = plt.gcf()
+    def plot_against_time(axis, ydata, label):
+        traceaxs[axis].plot(data.time, ydata, fmt)
+        traceaxs[axis].set_ylabel(label, **ylabel_common_args)
+        traceaxs[axis].minorticks_on()
+        traceaxs[axis].grid(True, "both")
 
-# plt.figure()
-fig, ax = plt.subplots(6,1, sharex=True)
+    plot_against_time(0, -data.z, "Height (m)")
+    plot_against_time(1, data_eul.pitch, "Pitch Angle (deg)")
+    plot_against_time(2, np.degrees(data.alpha), "Alpha (deg)")
+    plot_against_time(3, np.hypot(data.u, data.w), "Airspeed (m/s)")
+    plot_against_time(4, np.degrees(data.elevator), "Elevator (deg)")
+    plot_against_time(5, data.throttle, "Throttle (frac)")
 
-ylabel_common_args = {
-    "rotation": "horizontal",
-    # "labelpad": None,
-    "horizontalalignment": "right",
-}
+    return pathax, traceaxs
 
-def plot_against_time(axis, ydata, label):
-    ax[axis].plot(data.time, ydata, color='k')
-    ax[axis].set_ylabel(label, **ylabel_common_args)
-    ax[axis].minorticks_on()
-    ax[axis].grid(True, "both")
+if __name__ == "__main__":
+    import argparse
 
-plot_against_time(0, -data.z, "Height (m)")
-plot_against_time(1, data_eul.pitch, "Pitch Angle (deg)")
-plot_against_time(2, np.degrees(data.alpha), "Alpha (deg)")
-plot_against_time(3, np.hypot(data.u, data.w), "Airspeed (m/s)")
-plot_against_time(4, np.degrees(data.elevator), "Elevator (deg)")
-plot_against_time(5, data.throttle, "Throttle (frac)")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("run_name", help="Name of run")
+    parser.add_argument("-d", "--directory", help="Directory for runs", default="./runs")
+    parser.add_argument("--save", action="store_true", help="Save the output plots")
+    parser.add_argument("--multi-manoeuvre", help="Manoeuvre names for multi-manoeuvre run")
 
-ax[-1].set_xlabel('Time (s)')
-ax[-1].set_xlim(0.0, None)
+    args = parser.parse_args()
 
-fig.set_size_inches(6, 6)
-fig.align_ylabels()
-fig.tight_layout()
+    run_dir = os.path.join(args.directory, args.run_name)
 
-if args.save:
-    state_plot_file = os.path.join(
-        run_dir, f"state_plot_{args.run_name}.eps"
-    )
-    fig.savefig(state_plot_file, format="eps")
+    if args.multi_manoeuvre:
+        manoeuvres = args.multi_manoeuvre.split(",")
+        formats = ["-k", "--r"]
+        pathax = None
+        tracesaxs = None
+        for (i, manoeuvre) in enumerate(manoeuvres):
+            data = pandas.read_csv(
+                os.path.join(run_dir, f"output.{manoeuvre}.csv")
+            )
+            data_eul = get_eulerized(data)
+            pathax, tracesaxs = plot_data(data, data_eul, formats[i], pathax, tracesaxs)
+        pathax.legend(manoeuvres)
+        tracesaxs[-1].legend(manoeuvres)
+        plt.show()
+        exit()
 
-    position_plot_file = os.path.join(
-        run_dir, f"position_plot_{args.run_name}.eps"
-    )
-    position_fig.savefig(position_plot_file, format="eps")
+    data = pandas.read_csv(os.path.join(run_dir, "output.csv"))
 
-plt.show()
+    data_eul = get_eulerized(data)
+
+    with open(f"{run_dir}/metadata.json") as f:
+        metadata = json.load(f)
+
+    plt.minorticks_on()
+    plt.grid(True, 'both')
+
+    plt.plot(data.x, -data.z)
+    plt.xlabel('x-position')
+    plt.ylabel('z-position (inverted)')
+    plt.axis('equal')
+
+    ax = plt.gca()
+    last_pos = [10_000, 10_000]
+    for i in range(len(data.index)):
+        if i % 10 != 0:
+            continue
+        deltaPos = np.hypot(last_pos[0] - data.x[i], last_pos[1] - data.z[i])
+        if deltaPos < 0.5:
+            continue
+        draw_vehicle(ax, data.x[i], -data.z[i], np.radians(data_eul.pitch[i]), data.elevator[i])
+        last_pos = [data.x[i], data.z[i]]
+
+    if "waypoints" in metadata:
+        plt.scatter(
+            list(map(lambda p: p[0],metadata["waypoints"])),
+            list(map(lambda p: -p[1],metadata["waypoints"]))
+        )
+
+    plt.tight_layout()
+    position_fig = plt.gcf()
+
+    # plt.figure()
+    fig, ax = plt.subplots(6,1, sharex=True)
+
+    ylabel_common_args = {
+        "rotation": "horizontal",
+        # "labelpad": None,
+        "horizontalalignment": "right",
+    }
+
+    def plot_against_time(axis, ydata, label):
+        ax[axis].plot(data.time, ydata, color='k')
+        ax[axis].set_ylabel(label, **ylabel_common_args)
+        ax[axis].minorticks_on()
+        ax[axis].grid(True, "both")
+
+    plot_against_time(0, -data.z, "Height (m)")
+    plot_against_time(1, data_eul.pitch, "Pitch Angle (deg)")
+    plot_against_time(2, np.degrees(data.alpha), "Alpha (deg)")
+    plot_against_time(3, np.hypot(data.u, data.w), "Airspeed (m/s)")
+    plot_against_time(4, np.degrees(data.elevator), "Elevator (deg)")
+    plot_against_time(5, data.throttle, "Throttle (frac)")
+
+    ax[-1].set_xlabel('Time (s)')
+    ax[-1].set_xlim(0.0, None)
+
+    fig.set_size_inches(6, 6)
+    fig.align_ylabels()
+    fig.tight_layout()
+
+    if args.save:
+        state_plot_file = os.path.join(
+            run_dir, f"state_plot_{args.run_name}.eps"
+        )
+        fig.savefig(state_plot_file, format="eps")
+
+        position_plot_file = os.path.join(
+            run_dir, f"position_plot_{args.run_name}.eps"
+        )
+        position_fig.savefig(position_plot_file, format="eps")
+
+    plt.show()

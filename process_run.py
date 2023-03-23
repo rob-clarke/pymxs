@@ -1,6 +1,7 @@
 import sys
 sys.path.insert(1, '/home/rc13011/projects/mxs/pymxs/models')
 
+import argparse
 import json
 import os
 from collections import namedtuple
@@ -12,9 +13,13 @@ import gym_mxs
 
 import subprocess
 
+def namespace_object_hook(dict):
+  container = argparse.Namespace()
+  for k, v in dict.items():
+    setattr(container, k, v)
+  return container
 
 if __name__ == "__main__":
-  import argparse
 
   parser = argparse.ArgumentParser()
   parser.add_argument("run_name")
@@ -36,7 +41,7 @@ if __name__ == "__main__":
     f.seek(0)
     run_args = json.load(
       f,
-      object_hook=lambda d: namedtuple('X', d.keys())(*d.values())
+      object_hook=namespace_object_hook
     )
 
   # Attempt to checkout correct version of reward function
@@ -50,7 +55,7 @@ if __name__ == "__main__":
   except Exception as e:
     print(f"Error importing previous version of reward function: {e}")
     from testgym import create_reward_func
-  from testgym import evaluate_model, LongitudinalStateWrapper
+  from testgym import evaluate_model, LongitudinalStateWrapper, MultiManoeuvreWrapper
 
   reward_func = create_reward_func(run_args)
 
@@ -59,13 +64,36 @@ if __name__ == "__main__":
   if run_args.use_reduced_observation:
     env = LongitudinalStateWrapper(env)
 
-  if args.output or args.plot or args.save_plots:
-    output_file = f"{run_dir}/output.csv"
-    obs, reward, done, info, simtime = evaluate_model(model, env, output_file)
+  if run_args.multi_manoeuvre:
+    manoeuvre_names = ["hover", "descent"]
+    env = MultiManoeuvreWrapper(
+      env,
+      manoeuvre_names,
+      create_reward_func,
+      run_args
+    )
 
-    print(f"{obs=}")
-    print(f"{reward=}")
-    
+  if args.output or args.plot or args.save_plots:
+
+    if run_args.multi_manoeuvre:
+      for (idx,manoeuvre_name) in enumerate(manoeuvre_names):
+        # Set to 1 less as reset will increment
+        env.manoeuvre_index = idx - 1
+        output_file = f"{run_dir}/output.{manoeuvre_name}.csv"
+        obs, reward, done, info, simtime = evaluate_model(model, env, output_file)
+
+        print(f"Manoeuvre: {manoeuvre_name} ({idx})")
+        print(f"{obs=}")
+        print(f"{reward=}")
+
+    else:
+      output_file = f"{run_dir}/output.csv"
+      obs, reward, done, info, simtime = evaluate_model(model, env, output_file)
+
+      print(f"{obs=}")
+      print(f"{reward=}")
+
+
   if args.plot or args.save_plots:
     plot_command = [
       "python",
@@ -75,5 +103,7 @@ if __name__ == "__main__":
     ]
     if args.save_plots:
       plot_command.append("--save")
+    if run_args.multi_manoeuvre:
+      plot_command.extend(["--multi-manoeuvre", ','.join(manoeuvre_names)])
 
     subprocess.call(plot_command)
