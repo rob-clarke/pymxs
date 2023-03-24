@@ -149,14 +149,17 @@ if __name__ == "__main__":
         formats = ["-k", "--r"]
         pathax = None
         tracesaxs = None
+        maxtime = 0
         for (i, manoeuvre) in enumerate(manoeuvres):
             data = pandas.read_csv(
                 os.path.join(run_dir, f"output.{manoeuvre}.csv")
             )
             data_eul = get_eulerized(data)
             pathax, tracesaxs = plot_data(data, data_eul, formats[i], pathax, tracesaxs)
+            maxtime = max(maxtime, data.time.max())
         pathax.legend(manoeuvres)
         tracesaxs[-1].legend(manoeuvres)
+        tracesaxs[0].set_xlim(0.0, maxtime)
         plt.show()
         exit()
 
