@@ -243,6 +243,10 @@ if __name__ == "__main__":
   training_args.add_argument("-s", "--steps", help="Total timesteps to train for", type=int, default=500_000)
   training_args.add_argument("-l", "--episode-length", help="Episode timestep limit", type=int, default=DEFAULT_TIME_LIMIT)
   training_args.add_argument("--use-reduced-observation", help="Use only longitudinal state observations", action="store_true")
+  
+  network_args = parser.add_argument_group("Network options")
+  network_args.add_argument("--depth", help="Number of layers in network", type=int, default=2)
+  network_args.add_argument("--width", help="Width of layers in network", type=int, default=64)
 
   reward_args = parser.add_argument_group("Reward function options")
   reward_args.add_argument("-x", "--x-limit", help="x coordinate limit", type=float, default=DEFAULT_X_LIMIT)
@@ -294,7 +298,9 @@ if __name__ == "__main__":
       args
     )
 
-  model = MlAlg("MlpPolicy", env, verbose=1)
+  layers = [args.width] * args.depth
+  net_arch = [dict(vf=layers, pi=layers)]
+  model = MlAlg("MlpPolicy", env, verbose=1, policy_kwargs=dict(net_arch=net_arch))
   model.learn(total_timesteps=args.steps)
 
   run_dir = f"{args.directory}/{args.run_name}"
