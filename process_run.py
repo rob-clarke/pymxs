@@ -43,6 +43,13 @@ if __name__ == "__main__":
       f,
       object_hook=namespace_object_hook
     )
+  arg_defaults = [
+    ("use_reduced_observation", False),
+    ("multi_manoeuvre", False)
+  ]
+  for (arg,default) in arg_defaults:
+    if not hasattr(run_args, arg):
+      setattr(run_args, arg, default) 
 
   # Attempt to checkout correct version of reward function
   try:
