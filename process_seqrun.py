@@ -2,6 +2,7 @@ import sys
 sys.path.insert(1, '/home/rc13011/projects/mxs/pymxs/models')
 
 import argparse
+import copy
 import json
 import os
 from collections import namedtuple
@@ -113,9 +114,11 @@ if __name__ == "__main__":
       print(f"{obs=}")
       print(f"{reward=}")
 
+      midpoint_obs = copy.copy(obs)
+
       def transformer(raw_obs):
-        raw_obs[0] = raw_obs[0] - obs[0]
-        raw_obs[1] = raw_obs[1] - obs[1]
+        raw_obs[0] = raw_obs[0] - midpoint_obs[0]
+        raw_obs[1] = raw_obs[1] - midpoint_obs[1]
         return raw_obs
 
       # Run the hover case
@@ -125,6 +128,7 @@ if __name__ == "__main__":
 
       print(f"Manoeuvre: hover")
       print(f"{obs=}")
+      print(f"tf_obs={transformer(obs)}")
       print(f"{reward=}")
 
     else:
