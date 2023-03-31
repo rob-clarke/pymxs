@@ -160,6 +160,26 @@ class LongitudinalStateWrapper(gym.ObservationWrapper):
     #           x       z       u       w      qy      qw        q
     return [obs[0], obs[2], obs[3], obs[5], obs[7], obs[9], obs[11]]
 
+class StartNoiseWrapper(gym.Wrapper):
+  def __init__(self, env, start_noise=[0, 0, 0, 0]):
+    super().__init__(env)
+    self.start_noise = np.array(start_noise)
+    [_, base_vel, base_att, base_rates] = self.unwrapped.initial_state
+    self.base_airspeed = np.hypot(base_vel[0], base_vel[2])
+    self.base_gamma = np.arctan2(base_vel[2], base_vel[0])
+    self.base_rate = base_rates[1]
+
+  def reset(self, *args):
+    noise = (np.random.random((4,)) - 0.5) * 2
+    [n_airspeed, n_gamma, n_pitch, n_pitchrate] = noise * self.start_noise
+    u = (self.base_airspeed + n_airspeed) * np.cos(self.base_gamma + n_gamma)
+    w = (self.base_airspeed + n_airspeed) * np.sin(self.base_gamma + n_gamma)
+    self.unwrapped.initial_state[1] = [u, 0, w]
+    # self.unwrapped.initial_state[2] = []
+    # self.unwrapped.initial_state[3] = []
+    # print(u,w)
+    return self.env.reset(*args)
+
 class MultiManoeuvreWrapper(gym.Wrapper):
   def __init__(self, env, manoeuvres, reward_function_factory, args) -> None:
     super().__init__(env)
@@ -243,6 +263,7 @@ if __name__ == "__main__":
   training_args.add_argument("-s", "--steps", help="Total timesteps to train for", type=int, default=500_000)
   training_args.add_argument("-l", "--episode-length", help="Episode timestep limit", type=int, default=DEFAULT_TIME_LIMIT)
   training_args.add_argument("--use-reduced-observation", help="Use only longitudinal state observations", action="store_true")
+  training_args.add_argument("--noise", help="Add start position noise")
   
   network_args = parser.add_argument_group("Network options")
   network_args.add_argument("--depth", help="Number of layers in network", type=int, default=2)
@@ -289,6 +310,10 @@ if __name__ == "__main__":
   env = gym.make('gym_mxs/MXS-v0', reward_func=reward_func, timestep_limit=1000)
   if args.use_reduced_observation:
     env = LongitudinalStateWrapper(env)
+  
+  if args.noise is not None:
+    noise_amplitutdes = list(map(float, args.noise.split(",")))
+    env = StartNoiseWrapper(env, noise_amplitutdes)
 
   if args.multi_manoeuvre:
     env = MultiManoeuvreWrapper(
