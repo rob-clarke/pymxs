@@ -1,0 +1,35 @@
+Bootstrap: docker
+From: continuumio/miniconda3:22.11.1
+
+%files
+  ./analysis_scripts /app/analysis_scripts
+  ./gym_mxs /app/gym_mxs
+  ./inertia /app/inertia
+  ./models /app/models
+  ./processing_scripts /app/processing_scripts
+  ./pyaerso /app/pyaerso
+  ./testgym.py /app/testgym.py
+  ./conda-spec.txt /app/conda-spec.txt
+
+%post
+  # Install git
+  apt-get install -y --no-install-recommends git
+
+  # Create the conda env
+  conda create --name pymxs --file /app/conda-spec.txt
+  echo ". /opt/conda/etc/profile.d/conda.sh" >> $APPTAINER_ENVIRONMENT
+  echo "conda activate pymxs" >> $APPTAINER_ENVIRONMENT
+
+  bash -c "
+    # Activate the conda env
+    source /opt/conda/etc/profile.d/conda.sh
+    conda activate pymxs
+
+    # Install the mxs gym environment into the conda environment
+    cd /app/gym_mxs
+    python setup.py install
+  "
+
+%runscript
+  #!/usr/bin/env bash
+  exec python /app/testgym.py $@
