@@ -284,19 +284,22 @@ if __name__ == "__main__":
   if args.run_name is None:
     args.run_name = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
 
-  # Check if on clean commit
-  diff_result = subprocess.run(["git", "diff", "-s", "--exit-code", "HEAD"])
-  git_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], encoding="UTF-8")
-  git_sha = git_sha.strip()
-  if diff_result.returncode == 0:
-    args.commit = git_sha
-  else:
-    if args.ignore_dirty or not args.save:
-      args.commit = f"{git_sha}-dirty"
+  # Check if on clean commit or in apptainer
+  if os.environ.get("PYMXS_COMMIT") is None:
+    diff_result = subprocess.run(["git", "diff", "-s", "--exit-code", "HEAD"])
+    git_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], encoding="UTF-8")
+    git_sha = git_sha.strip()
+    if diff_result.returncode == 0:
+      args.commit = git_sha
     else:
-      print("Error: Current tree not committed.")
-      print("Prevent saving with --no-save, or explicitly ignore dirty tree with --ignore-dirty")
-      sys.exit(1)
+      if args.ignore_dirty or not args.save:
+        args.commit = f"{git_sha}-dirty"
+      else:
+        print("Error: Current tree not committed.")
+        print("Prevent saving with --no-save, or explicitly ignore dirty tree with --ignore-dirty")
+        sys.exit(1)
+  else:
+    args.commit = os.environ.get("PYMXS_COMMIT")
 
   # Attempt to load any waypoint file
   if args.waypoint_file:

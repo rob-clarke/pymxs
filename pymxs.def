@@ -1,6 +1,15 @@
 Bootstrap: docker
 From: continuumio/miniconda3:22.11.1
 
+%setup
+  set +e
+  git diff -s --exit-code HEAD
+  RESP=$?
+  set -e
+  DIRTY=$(if [ ${RESP} -eq 0 ]; then echo ""; else echo "-dirty"; fi)
+  HASH=$(git rev-parse HEAD)${DIRTY}
+  echo $HASH > /tmp/pymxs-hash
+
 %files
   ./analysis_scripts /app/analysis_scripts
   ./gym_mxs /app/gym_mxs
@@ -10,16 +19,18 @@ From: continuumio/miniconda3:22.11.1
   ./pyaerso /app/pyaerso
   ./testgym.py /app/testgym.py
   ./conda-spec.txt /app/conda-spec.txt
+  /tmp/pymxs-hash /app/pymxs-hash
 
 %post
-  # Install git
-  apt-get install -y --no-install-recommends git
-
-  # Create the conda env
+  # Create the conda env & source at runtime
   conda create --name pymxs --file /app/conda-spec.txt
   echo ". /opt/conda/etc/profile.d/conda.sh" >> $APPTAINER_ENVIRONMENT
   echo "conda activate pymxs" >> $APPTAINER_ENVIRONMENT
 
+  # Create envvar to signal commit hash
+  echo "export PYMXS_COMMIT=$(cat /app/pymxs-hash)" >> $APPTAINER_ENVIRONMENT
+
+  # Install the gym enviroment in the conda env
   bash -c "
     # Activate the conda env
     source /opt/conda/etc/profile.d/conda.sh
