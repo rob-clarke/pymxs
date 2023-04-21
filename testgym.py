@@ -133,6 +133,18 @@ def create_reward_func(args):
 
     return 0, False, reward_state
 
+  def climb_reward_func(obs, reward_state):
+    [x,y,z, u,v,w, qx,qy,qz,qw, p,q,r] = obs
+    pitch = get_pitch(qx,qy,qz,qw)
+
+    if x > x_limit:
+      return -z, True, None
+
+    if u < 7:
+      return -100, True, None
+
+    return 0, False, None
+
   if not hasattr(args, "manoeuvre"):
     manoeuvre = "descent"
   else:
@@ -142,6 +154,8 @@ def create_reward_func(args):
     return hover_reward_func
   elif manoeuvre == "turnaround":
     return turnaround_reward_func
+  elif manoeuvre == "climb":
+    return climb_reward_func
   else:
     return descent_reward_func
 
