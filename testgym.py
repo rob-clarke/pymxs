@@ -129,7 +129,7 @@ def create_reward_func(args):
     pitch = get_pitch(qx,qy,qz,qw)
 
     if x < 0:
-      return 100/reward_state * (1/(1+abs(z))), True, None
+      return 1 + 100/reward_state * (1/(climb_weight*(1+abs(z)))), True, None
 
     return 0, False, reward_state
 
