@@ -121,12 +121,17 @@ def create_reward_func(args):
     return 0, False, reward_state
 
   def turnaround_reward_func(obs, reward_state):
+    if reward_state is None:
+      reward_state = 0
+    reward_state += 1
+
     [x,y,z, u,v,w, qx,qy,qz,qw, p,q,r] = obs
     pitch = get_pitch(qx,qy,qz,qw)
 
     if x < 0:
-      return 100, True, None
-    return 0, False, None
+      return 100/reward_state, True, None
+
+    return 0, False, reward_state
 
   if not hasattr(args, "manoeuvre"):
     manoeuvre = "descent"
