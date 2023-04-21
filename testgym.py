@@ -129,7 +129,7 @@ def create_reward_func(args):
     pitch = get_pitch(qx,qy,qz,qw)
 
     if x < 0:
-      return 100/reward_state, True, None
+      return 100/reward_state - abs(z), True, None
 
     return 0, False, reward_state
 
