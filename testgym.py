@@ -139,7 +139,7 @@ def create_reward_func(args):
 
     if x > x_limit:
       pitch_error = abs(pitch)
-      return (1-pitch_weight*pitch_error) * -z, True, None
+      return -z + 10 * (1-pitch_weight*pitch_error), True, None
 
     if u < 7:
       return -100, True, None
