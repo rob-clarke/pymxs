@@ -1,0 +1,27 @@
+{
+  "run_name": "2023-02-09T14-03-50",
+  "save": true,
+  "directory": "./runs",
+  "output": false,
+  "plot": true,
+  "ignore_dirty": true,
+  "steps": 500000,
+  "episode_length": 1000,
+  "x_limit": 45.0,
+  "u_limit": 25,
+  "climb_weight": 1,
+  "pitch_weight": 0,
+  "waypoint_weight": 0.1,
+  "waypoint_file": "./waypoints3.json",
+  "commit": "6da234dea526830ed92265686e0e698feb371361-dirty",
+  "waypoints": [
+    [
+      10,
+      -2
+    ],
+    [
+      30,
+      5
+    ]
+  ]
+}

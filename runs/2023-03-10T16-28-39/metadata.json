@@ -1,0 +1,20 @@
+{
+  "run_name": "2023-03-10T16-28-39",
+  "save": true,
+  "directory": "./runs",
+  "output": false,
+  "plot": false,
+  "ignore_dirty": false,
+  "steps": 2000000,
+  "episode_length": 1000,
+  "use_reduced_observation": true,
+  "x_limit": 30,
+  "u_limit": 25,
+  "climb_weight": 1,
+  "pitch_weight": 0,
+  "waypoint_weight": 0,
+  "waypoint_file": 0,
+  "manoeuvre": "hover",
+  "commit": "c324809038ad1296643e2cde5ff88b38cc884e0a",
+  "waypoints": []
+}

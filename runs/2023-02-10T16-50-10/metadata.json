@@ -1,0 +1,27 @@
+{
+  "run_name": "2023-02-10T16-50-10",
+  "save": true,
+  "directory": "./runs",
+  "output": false,
+  "plot": false,
+  "ignore_dirty": true,
+  "steps": 750000,
+  "episode_length": 1000,
+  "x_limit": 30.0,
+  "u_limit": 25,
+  "climb_weight": 1,
+  "pitch_weight": 0,
+  "waypoint_weight": 0.05,
+  "waypoint_file": "./waypoints2.json",
+  "commit": "babb865ae9c47e0f5694a3cdc2d4ed89e50f0a4c-dirty",
+  "waypoints": [
+    [
+      10,
+      -2
+    ],
+    [
+      20,
+      5
+    ]
+  ]
+}
