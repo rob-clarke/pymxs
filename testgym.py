@@ -146,6 +146,25 @@ def create_reward_func(args):
 
     return 0, False, None
 
+  def hover_exit_func(obs, reward_state):
+    [x,y,z, u,v,w, qx,qy,qz,qw, p,q,r] = obs
+    pitch = get_pitch(qx,qy,qz,qw)
+
+    if x > x_limit or z > 5:
+      pitch_error = abs(pitch)
+      vel_error = abs(u-12.5)
+      return (1-pitch_weight*pitch_error)*(1-vel_error), True, None
+
+    is_flight = within(q, -0.01, 0.01) \
+      and within(pitch, -0.05, 0.05) \
+      and within(u, 10, 15) \
+      and within(w, -0.1, 0.1)
+
+    if is_flight:
+      return 10.0 + 1.0 / abs(z+0.0001), True, None
+
+    return 0, False, None
+
   if not hasattr(args, "manoeuvre"):
     manoeuvre = "descent"
   else:
@@ -157,6 +176,8 @@ def create_reward_func(args):
     return turnaround_reward_func
   elif manoeuvre == "climb":
     return climb_reward_func
+  elif manoeuvre == "hoverexit":
+    return hover_exit_func
   else:
     return descent_reward_func
 
@@ -209,6 +230,25 @@ class StartNoiseWrapper(gym.Wrapper):
     # self.unwrapped.initial_state[3] = []
     # print(u,w)
     return self.env.reset(*args)
+
+class StartStateWrapper(gym.Wrapper):
+  def __init__(
+    self,
+    env,
+    start_position=None,
+    start_velocity=None,
+    start_attitude=None,
+    start_rates=None
+  ):
+    super().__init__(env)
+    if start_position is not None:
+      self.unwrapped.initial_state[0] = start_position
+    if start_velocity is not None:
+      self.unwrapped.initial_state[1] = start_velocity
+    if start_attitude is not None:
+      self.unwrapped.initial_state[2] = start_attitude
+    if start_rates is not None:
+      self.unwrapped.initial_state[3] = start_rates
 
 class MultiManoeuvreWrapper(gym.Wrapper):
   def __init__(self, env, manoeuvres, reward_function_factory, args) -> None:
@@ -354,6 +394,14 @@ if __name__ == "__main__":
       ["hover", "descent"],
       create_reward_func,
       args
+    )
+
+  if args.manoeuvre in ["hoverexit"]:
+    angle_by_2 = (np.pi / 2) / 2
+    env = StartStateWrapper(
+      env,
+      start_velocity=[0,0,0],
+      start_attitude=[0,np.sin(angle_by_2),0,np.cos(angle_by_2)]
     )
 
   layers = [args.width] * args.depth
