@@ -20,6 +20,7 @@ import math
 
 import numpy as np
 import scipy
+import scipy.optimize
 
 import matplotlib.pyplot as plt
 
@@ -136,7 +137,7 @@ def make_top3_plots(neutral_data,c_lifts,C_lift,C_lift_complex,c_ds,C_drag,C_dra
         lambda x: linear(np.radians(x),C_lift["alpha"],C_lift["zero"]),
         None, #np.linspace(-30,30,200),
         None, #lambda x: c_l_curve(np.radians(x),*C_lift_complex),
-        "Pitch angle (deg)",
+        "Angle of attack (deg)",
         "Lift coefficient"
         )
     ax_cl = ax
@@ -150,7 +151,7 @@ def make_top3_plots(neutral_data,c_lifts,C_lift,C_lift_complex,c_ds,C_drag,C_dra
         lambda x: quadratic(np.radians(x),C_drag["alpha2"],C_drag["alpha"],C_drag["zero"]),
         None, #np.linspace(-30,30,200),
         None, #lambda x: c_d_curve(np.radians(x),*C_drag_complex),
-        "Pitch angle (deg)",
+        "Angle of attack (deg)",
         "Drag coefficient"
         )
     ax_cd = ax
@@ -164,8 +165,8 @@ def make_top3_plots(neutral_data,c_lifts,C_lift,C_lift_complex,c_ds,C_drag,C_dra
         lambda x: linear(np.radians(x),C_M["alpha"],C_M["zero"]),
         np.linspace(-30,30,200),
         lambda x: c_m_curve(np.radians(x),*C_M_complex),
-        "Pitch angle (deg)",
-        "Pitch moment coefficient"
+        "Angle of attack (deg)",
+        "Pitching moment coefficient"
         )
     ax_cm = ax
 
@@ -243,7 +244,7 @@ if __name__ == "__main__":
 
     ax_cl.plot(xflr_2d_data['alpha']+alpha_offset,xflr_2d_data['CL'],color="pink")
     ax_cd.plot(xflr_2d_data['alpha']+alpha_offset,xflr_2d_data['CD'],color="pink")
-    ax_cm.plot(xflr_2d_data['alpha']+alpha_offset,xflr_2d_data['Cm'],color="pink")
+    # ax_cm.plot(xflr_2d_data['alpha']+alpha_offset,xflr_2d_data['Cm'],color="pink")
 
     xflr_3d_data = pd.read_table(
         os.path.join(currentdir,'../xflr_data/T1-15_0 m_s-VLM1.txt'),
@@ -251,9 +252,9 @@ if __name__ == "__main__":
         skiprows=7,
         delim_whitespace=True
     )
-    ax_cl.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['CL'],color="purple")
-    ax_cd.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['CD'],color="purple")
-    ax_cm.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['Cm'],color="purple")
+    # ax_cl.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['CL'],color="purple")
+    # ax_cd.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['CD'],color="purple")
+    # ax_cm.plot(xflr_3d_data['alpha']+alpha_offset,xflr_3d_data['Cm'],color="purple")
 
     def downwash_angle(alpha, derate=True):
         c_lw = c_l_curve(alpha,*C_lift_complex)
@@ -270,13 +271,13 @@ if __name__ == "__main__":
 
     ax_cl.set_xlim([-35,35])
     ax_cl.set_ylim([-1.3,1.3])
-    ax_cl.legend(['Linear fit','XFLR 2D','XFLR 3D','C_L fit'])
+    ax_cl.legend(['Linear fit','XFLR 2D','Polynomial fit', 'Raw Data'])
 
     ax_cd.set_xlim([-35,35])
     ax_cd.set_ylim([0,1.0])
     ax_cd.legend(['Quadratic fit','XFLR 2D','XFLR 3D','C_D fit'])
 
-    ax_cm.plot(alpha_samples,effective_cm(np.radians(alpha_samples),False))
+    # ax_cm.plot(alpha_samples,effective_cm(np.radians(alpha_samples),False))
     ax_cm.plot(alpha_samples,effective_cm(np.radians(alpha_samples),True))
 
     # ax_cm.plot(
@@ -316,7 +317,7 @@ if __name__ == "__main__":
     # )
     ax_cm.set_xlim([-45,45])
     ax_cm.set_ylim([-1,1])
-    ax_cm.legend(['Linear fit','Asymptopic fit','XFLR 2D','XFLR 3D','Tail-derived coefficient','TDC downwash fade'])
+    ax_cm.legend(['Linear fit','Asymptopic fit','Polynomial fit','Raw data'])
 
     plt.figure()
     plt.plot(alpha_samples,c_dta(np.radians(alpha_samples)))
