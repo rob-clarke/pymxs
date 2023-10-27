@@ -4,7 +4,11 @@ import json
 import pandas
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
+import matplotlib.patches
 from matplotlib.patches import PathPatch
+
+# from matplotlib import rc
+# rc('font', **{'family': 'serif'})
 
 import numpy as np
 
@@ -90,8 +94,9 @@ def plot_vehicle(ax, data, data_eul):
         last_pos = [data.x[i], data.z[i]]
 
 def plot_data(data, data_eul, fmt="", pathax=None, traceaxs=None):
+    pathfig = None
     if pathax is None:
-        plt.figure()
+        pathfig = plt.figure()
         pathax = plt.axes()
         plt.minorticks_on()
         plt.grid(True, 'both')
@@ -102,14 +107,15 @@ def plot_data(data, data_eul, fmt="", pathax=None, traceaxs=None):
     pathax.plot(data.x, -data.z, fmt)
     plot_vehicle(pathax, data, data_eul)
 
+    tracefig = None
     if traceaxs is None:
-        fig, traceaxs = plt.subplots(6,1, sharex=True)
+        tracefig, traceaxs = plt.subplots(6,1, sharex=True)
         traceaxs[-1].set_xlabel('Time (s)')
         traceaxs[-1].set_xlim(0.0, None)
 
-        fig.set_size_inches(6, 6)
-        fig.align_ylabels()
-        fig.tight_layout()
+        tracefig.set_size_inches(6, 6)
+        tracefig.align_ylabels()
+        tracefig.tight_layout()
 
     ylabel_common_args = {
         "rotation": "horizontal",
@@ -129,7 +135,7 @@ def plot_data(data, data_eul, fmt="", pathax=None, traceaxs=None):
     plot_against_time(4, np.degrees(data.elevator), "Elevator (deg)")
     plot_against_time(5, data.throttle, "Throttle (frac)")
 
-    return pathax, traceaxs
+    return pathax, traceaxs, pathfig, tracefig
 
 if __name__ == "__main__":
     import argparse
@@ -139,6 +145,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--directory", help="Directory for runs", default="./runs")
     parser.add_argument("--save", action="store_true", help="Save the output plots")
     parser.add_argument("--multi-manoeuvre", help="Manoeuvre names for multi-manoeuvre run")
+    parser.add_argument("--no-show", action="store_true", help="Don't show plots, run in batch mode")
 
     args = parser.parse_args()
 
@@ -147,7 +154,9 @@ if __name__ == "__main__":
     if args.multi_manoeuvre:
         manoeuvres = args.multi_manoeuvre.split(",")
         formats = ["-k", "--r"]
+        pathfig = None
         pathax = None
+        tracefig = None
         tracesaxs = None
         maxtime = 0
         for (i, manoeuvre) in enumerate(manoeuvres):
@@ -155,20 +164,40 @@ if __name__ == "__main__":
                 os.path.join(run_dir, f"output.{manoeuvre}.csv")
             )
             data_eul = get_eulerized(data)
-            pathax, tracesaxs = plot_data(data, data_eul, formats[i], pathax, tracesaxs)
+            pathax, tracesaxs, newpathfig, newtracefig = plot_data(data, data_eul, formats[i], pathax, tracesaxs)
+            if newpathfig and newtracefig:
+                pathfig = newpathfig
+                tracefig = newtracefig
             maxtime = max(maxtime, data.time.max())
         pathax.legend(manoeuvres)
         tracesaxs[-1].legend(manoeuvres)
         tracesaxs[0].set_xlim(0.0, maxtime)
-        plt.show()
+
+        # wall1 = matplotlib.patches.Rectangle((30, -12), 5, 50, linewidth=1, edgecolor=(0.1,0.1,0.1,0.8), facecolor=(0.1,0.1,0.1,0.5))
+        # pathax.add_patch(wall1)
+        # wall1a = matplotlib.patches.Rectangle((30, -20), 5,-50, linewidth=1, edgecolor=(0.1,0.1,0.1,0.8), facecolor=(0.1,0.1,0.1,0.5))
+        # pathax.add_patch(wall1a)
+        # wall2 = matplotlib.patches.Rectangle((60, -30), 5, 60, linewidth=1, edgecolor=(0.1,0.1,0.1,0.8), facecolor=(0.1,0.1,0.1,0.5))
+        # pathax.add_patch(wall2)
+
+        if args.save:
+            state_plot_file = os.path.join(
+                run_dir, f"state_plot_{args.run_name}.eps"
+            )
+            tracefig.savefig(state_plot_file, format="eps")
+
+            position_plot_file = os.path.join(
+                run_dir, f"position_plot_{args.run_name}.eps"
+            )
+            pathfig.savefig(position_plot_file, format="eps")
+
+        if not args.no_show:
+            plt.show()
         exit()
 
     data = pandas.read_csv(os.path.join(run_dir, "output.csv"))
 
     data_eul = get_eulerized(data)
-
-    with open(f"{run_dir}/metadata.json") as f:
-        metadata = json.load(f)
 
     plt.minorticks_on()
     plt.grid(True, 'both')
@@ -189,17 +218,22 @@ if __name__ == "__main__":
         draw_vehicle(ax, data.x[i], -data.z[i], np.radians(data_eul.pitch[i]), data.elevator[i])
         last_pos = [data.x[i], data.z[i]]
 
-    if "waypoints" in metadata:
-        plt.scatter(
-            list(map(lambda p: p[0],metadata["waypoints"])),
-            list(map(lambda p: -p[1],metadata["waypoints"]))
-        )
+    try:
+        with open(f"{run_dir}/metadata.json") as f:
+            metadata = json.load(f)
+        if "waypoints" in metadata:
+            plt.scatter(
+                list(map(lambda p: p[0],metadata["waypoints"])),
+                list(map(lambda p: -p[1],metadata["waypoints"]))
+            )
+    except FileNotFoundError:
+        pass
 
     plt.tight_layout()
     position_fig = plt.gcf()
 
     # plt.figure()
-    fig, ax = plt.subplots(6,1, sharex=True)
+    fig, ax = plt.subplots(8,1, sharex=True)
 
     ylabel_common_args = {
         "rotation": "horizontal",
@@ -219,6 +253,8 @@ if __name__ == "__main__":
     plot_against_time(3, np.hypot(data.u, data.w), "Airspeed (m/s)")
     plot_against_time(4, np.degrees(data.elevator), "Elevator (deg)")
     plot_against_time(5, data.throttle, "Throttle (frac)")
+    plot_against_time(6, data.reward, "Reward")
+    plot_against_time(7, np.cumsum(data.reward), "Cumulative reward")
 
     ax[-1].set_xlabel('Time (s)')
     ax[-1].set_xlim(0.0, None)
@@ -238,4 +274,5 @@ if __name__ == "__main__":
         )
         position_fig.savefig(position_plot_file, format="eps")
 
-    plt.show()
+    if not args.no_show:
+        plt.show()
