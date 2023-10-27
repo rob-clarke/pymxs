@@ -165,6 +165,14 @@ def create_reward_func(args):
 
     return 0, False, None
 
+  def hover_sustain_func(obs, reward_state):
+    [x,y,z, u,v,w, qx,qy,qz,qw, p,q,r] = obs
+    pitch = get_pitch(qx,qy,qz,qw)
+
+    recip_reward = (1 + abs(x)) * (1 + abs(z))
+
+    return 1/recip_reward, False, None
+
   if not hasattr(args, "manoeuvre"):
     manoeuvre = "descent"
   else:
@@ -178,6 +186,8 @@ def create_reward_func(args):
     return climb_reward_func
   elif manoeuvre == "hoverexit":
     return hover_exit_func
+  elif manoeuvre == "hoversus":
+    return hover_sustain_func
   else:
     return descent_reward_func
 
@@ -187,12 +197,12 @@ def evaluate_model(model, env, output_path=False):
   simtime = 0
   with open(output_path, "w") if output_path else nullcontext() as outfile:
     if outfile:
-      outfile.write("time,x,y,z,u,v,w,qx,qy,qz,qw,p,q,r,alpha,airspeed,elevator,throttle\n")
+      outfile.write("time,x,y,z,u,v,w,qx,qy,qz,qw,p,q,r,alpha,airspeed,elevator,throttle,reward\n")
     while not done:
       action, _state = model.predict(obs, deterministic=True)
       obs, reward, done, info = env.step(action)
       if outfile:
-        outfile.write(f"{simtime},{env.render('ansi')[1:-1]}\n")
+        outfile.write(f"{simtime},{env.render('ansi')[1:-1]},{reward}\n")
       simtime += env.dT
 
   return obs, reward, done, info, simtime
@@ -396,7 +406,7 @@ if __name__ == "__main__":
       args
     )
 
-  if args.manoeuvre in ["hoverexit"]:
+  if args.manoeuvre in ["hoverexit", "hoversus"]:
     angle_by_2 = (np.pi / 2) / 2
     env = StartStateWrapper(
       env,
@@ -417,6 +427,7 @@ if __name__ == "__main__":
       json.dump(vars(args), f, indent=2)
 
   if args.output or args.plot:
+    os.makedirs(run_dir, exist_ok=True)
     output_file = f"{run_dir}/output.csv"
     evaluate_model(model, env, output_file)
     
