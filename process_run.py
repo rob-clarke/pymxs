@@ -68,7 +68,7 @@ if __name__ == "__main__":
   reward_func = create_reward_func(run_args)
 
   model = MlAlg.load(f"{run_dir}/model.zip")
-  env = gym.make('gym_mxs/MXS-v0', reward_func=reward_func, timestep_limit=1000)
+  env = gym.make('gym_mxs/MXS-v0', reward_func=reward_func, timestep_limit=run_args.episode_length)
   if run_args.use_reduced_observation:
     env = LongitudinalStateWrapper(env)
 
