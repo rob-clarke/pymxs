@@ -390,7 +390,7 @@ if __name__ == "__main__":
 
   reward_func = create_reward_func(args)
 
-  env = gym.make('gym_mxs/MXS-v0', reward_func=reward_func, timestep_limit=1000)
+  env = gym.make('gym_mxs/MXS-v0', reward_func=reward_func, timestep_limit=args.episode_length)
   if args.use_reduced_observation:
     env = LongitudinalStateWrapper(env)
 
