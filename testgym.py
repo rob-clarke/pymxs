@@ -169,7 +169,7 @@ def create_reward_func(args):
     [x,y,z, u,v,w, qx,qy,qz,qw, p,q,r] = obs
     pitch = get_pitch(qx,qy,qz,qw)
 
-    recip_reward = (1 + abs(x)) * (1 + abs(z))
+    recip_reward = (1 + abs(x)) * (1 + abs(z)) * (1 + abs(u)) * (1 + abs(w))
 
     return 1.0/(recip_reward ** 2), False, None
 
