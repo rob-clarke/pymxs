@@ -171,7 +171,7 @@ def create_reward_func(args):
 
     recip_reward = (1 + abs(x)) * (1 + abs(z))
 
-    return 1/recip_reward, False, None
+    return 1.0/(recip_reward ** 2), False, None
 
   if not hasattr(args, "manoeuvre"):
     manoeuvre = "descent"
