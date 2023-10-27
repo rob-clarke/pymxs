@@ -393,7 +393,15 @@ if __name__ == "__main__":
   env = gym.make('gym_mxs/MXS-v0', reward_func=reward_func, timestep_limit=1000)
   if args.use_reduced_observation:
     env = LongitudinalStateWrapper(env)
-  
+
+  if args.manoeuvre in ["hoverexit", "hoversus"]:
+    angle_by_2 = (np.pi / 2) / 2
+    env = StartStateWrapper(
+      env,
+      start_velocity=[0,0,0],
+      start_attitude=[0,np.sin(angle_by_2),0,np.cos(angle_by_2)]
+    )
+
   if args.noise is not None:
     noise_amplitutdes = list(map(float, args.noise.split(",")))
     env = StartNoiseWrapper(env, noise_amplitutdes)
@@ -404,14 +412,6 @@ if __name__ == "__main__":
       ["hover", "descent"],
       create_reward_func,
       args
-    )
-
-  if args.manoeuvre in ["hoverexit", "hoversus"]:
-    angle_by_2 = (np.pi / 2) / 2
-    env = StartStateWrapper(
-      env,
-      start_velocity=[0,0,0],
-      start_attitude=[0,np.sin(angle_by_2),0,np.cos(angle_by_2)]
     )
 
   layers = [args.width] * args.depth
