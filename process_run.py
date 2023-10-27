@@ -4,6 +4,7 @@ sys.path.insert(1, '/home/rc13011/projects/mxs/pymxs/models')
 import argparse
 import json
 import os
+import numpy as np
 from collections import namedtuple
 
 from stable_baselines3 import PPO as MlAlg
@@ -62,7 +63,7 @@ if __name__ == "__main__":
   except Exception as e:
     print(f"Error importing previous version of reward function: {e}")
     from testgym import create_reward_func
-  from testgym import evaluate_model, LongitudinalStateWrapper, MultiManoeuvreWrapper
+  from testgym import evaluate_model, LongitudinalStateWrapper, MultiManoeuvreWrapper, StartStateWrapper
 
   reward_func = create_reward_func(run_args)
 
@@ -70,6 +71,14 @@ if __name__ == "__main__":
   env = gym.make('gym_mxs/MXS-v0', reward_func=reward_func, timestep_limit=1000)
   if run_args.use_reduced_observation:
     env = LongitudinalStateWrapper(env)
+
+  if run_args.manoeuvre in ["hoverexit", "hoversus"]:
+    angle_by_2 = (np.pi / 2) / 2
+    env = StartStateWrapper(
+      env,
+      start_velocity=[0,0,0],
+      start_attitude=[0,np.sin(angle_by_2),0,np.cos(angle_by_2)]
+    )
 
   if run_args.multi_manoeuvre:
     manoeuvre_names = ["hover", "descent"]
@@ -79,6 +88,7 @@ if __name__ == "__main__":
       create_reward_func,
       run_args
     )
+
 
   if args.output or args.plot or args.save_plots:
 
