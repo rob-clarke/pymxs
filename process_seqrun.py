@@ -107,7 +107,7 @@ if __name__ == "__main__":
       # Run the descent case first
       obs = env.reset()
       env.manoeuvre_index = 1
-      output_file = f"{run_dir}/output.descent.csv"
+      output_file = f"{run_dir}/output.descent.seq.csv"
       obs, reward, done, info, simtime = evaluate_model(model, env, output_file, initial_obs=obs)
 
       print(f"Manoeuvre: descent")
@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
       # Run the hover case
       env.manoeuvre_index = 0
-      output_file = f"{run_dir}/output.hover.csv"
+      output_file = f"{run_dir}/output.hover.seq.csv"
       obs, reward, done, info, simtime = evaluate_model(model, env, output_file, transformer=transformer, initial_obs=obs, initial_sim=simtime)
 
       print(f"Manoeuvre: hover")

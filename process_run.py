@@ -109,7 +109,7 @@ if __name__ == "__main__":
       args.run_name
     ]
     if args.save_plots:
-      plot_command.append("--save")
+      plot_command.extend(["--save", "--no-show"])
     if run_args.multi_manoeuvre:
       plot_command.extend(["--multi-manoeuvre", ','.join(manoeuvre_names)])
 
