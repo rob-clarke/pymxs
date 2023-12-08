@@ -13,7 +13,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
 from analysis_scripts.big3 import c_l_curve, c_d_curve, c_lta, c_dta, x_t, S_w as Sw, S_t, c_w as cw
-from processing_scripts.utils.fits import poly_manifold, S
+from processing_scripts.utils.fits import poly_manifold, poly_surface, S
 
 from pyaerso import AffectedBody, AeroBody, Body, Force, Torque
 
@@ -72,8 +72,36 @@ class DensityModel:
 def deg2rad(deg):
     return deg/180.0 * math.pi
 
-def clamp(x,u,l):
+def clamp(x,l,u):
     return max(min(x,u),l)
+
+c_m_delta_speeds = [
+    10.0,
+    # 12.5,
+    15.0,
+    17.5,
+    20.0,
+    22.5
+]
+c_m_delta_coeffs = [
+    [-1.2437108,  -0.40912014,  0.68492118, -0.41668474, -0.05446331,  1.68333026,
+        0.3901467,   1.53671085, -0.03946803,  0.02740918],
+    # [-1.16087872, -0.15809144, -1.75358049, -0.59869353, -0.10958262,  3.43234771,
+    #     0.6871851,   0.95533266, -0.20000579,  0.05321122],
+    [-1.15416664, -0.25519729,  0.44940554, -0.23885613, -0.03351797,  0.51878533,
+        0.22735268,  1.51557462, -0.00272833,  0.01202957],
+    [-1.14407939, -0.11504951,  0.26004851, -0.51869275,  0.00148918,  0.37951677,
+        0.56677261,  1.43193874, -0.10462167,  0.01229135],
+    [-0.50449119, -0.05818547,  0.27627828,  0.07019003, -0.11702924,  0.1208649,
+        -0.13570306,  1.33357519,  0.09450456,  0.00667436],
+    [-0.12412663, -0.01750489, -0.19466328,  0.07393621, -0.07972068,  0.45831077,
+        -0.14167883,  1.11579314,  0.08896908,  0.00473207],
+    ]
+
+def c_m_surf_get_interp_index(aspd):
+    for i,v in enumerate(c_m_delta_speeds):
+        if aspd <= v:
+            return clamp(i, 1, 5)
 
 class Combined:
     def __init__(self, timestep):
@@ -109,6 +137,23 @@ class Combined:
         throttle = input[2]
         aspd = clamp(airstate[2],10,22)
         return poly_manifold(elev,throttle,aspd,3,*coeffs)
+    
+    def get_elevator_moment_coeff_delta_surf(self, airstate, rates, input):
+        elev = input[1]
+        throttle = input[2]
+        aspd = clamp(airstate[2],10,22.5)
+        index = c_m_surf_get_interp_index(aspd)
+
+        lower_aspd = c_m_delta_speeds[index-1]
+        lower = poly_surface(elev,throttle,3,*c_m_delta_coeffs[index-1])
+
+        upper_aspd = c_m_delta_speeds[index]
+        upper = poly_surface(elev,throttle,3,*c_m_delta_coeffs[index])
+
+        propotion = (aspd - lower_aspd)/(upper_aspd - lower_aspd)
+        delta_coeff = upper - lower
+
+        return lower + propotion * delta_coeff
 
     def get_thrust(self,airspeed,throttle):
         return 1.1576e1 * throttle**2 \
@@ -151,6 +196,10 @@ class Combined:
         )
         return m_t_aq
 
+    def get_m_t_zero(self, input):
+        [_, elev, throttle, _] = input
+        return 3.97899352*throttle*elev
+
     def get_effect(self,airstate,rates,input):
         alpha = airstate[0]
         c_l = self.c_l_curve(alpha)
@@ -168,13 +217,21 @@ class Combined:
         V = airstate[2]
 
         m_t_aq = self.get_m_t_aq(c_l, alpha, rates, V, q)
+        m_t_zero = self.get_m_t_zero(input)
 
-        dc_m_elev = self.get_elevator_moment_coeff_delta(airstate,rates,input)
+        # dc_m_elev = self.get_elevator_moment_coeff_delta(airstate,rates,input)
+        dc_m_elev = self.get_elevator_moment_coeff_delta_surf(airstate,rates,input)
 
         lift = q * Sw * c_l
         drag = q * Sw * c_d
         # moment = q * Sw * cw * (c_m + dc_m_elev + -6.391 * alpha_dot) + m_t_aq
-        moment = q * Sw * cw * (c_m + dc_m_elev) + m_t_aq
+        moment = q * Sw * cw * (c_m + dc_m_elev)
+
+        if V < 10:
+            proportion = V / 10
+            moment = (1-proportion) * m_t_zero + proportion * moment
+
+        moment = moment + m_t_aq
 
         thrust = self.get_thrust(V,input[2])
         # print(f"t: {self.time:.3f} T: {thrust:.3f}, V: {V:.3f}, Alpha: {alpha:.3f}, q: {q:.3f},  c_m: {c_m:.3f}, alpha_q: {alpha_q:.3f}, c_m_eff: {c_m+dc_m_elev:.3f}, moment: {moment:.3f}, dc_m_elev: {dc_m_elev:.3f}, mtaq: {m_t_aq:.3f}")

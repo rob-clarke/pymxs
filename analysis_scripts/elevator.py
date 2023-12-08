@@ -50,7 +50,8 @@ def plot_C_M_delta_elev(elevdata,c_m_pitch_fit,c_m_delta_elev_fit):
 
 pitches = [-10,-7.5,-5,-2.5,0.0,2.5,5,7.5,10]
 throttles = [0.0,0.2,0.35,0.5,0.65,0.8]
-airspeeds = [10.0,12.5,15.0,17.5,20.0,22.5]
+# airspeeds = [10.0,12.5,15.0,17.5,20.0,22.5]
+airspeeds = [10.0,15.0,17.5,20.0,22.5]
 
 def calculate_c_m_elev(data,c_m_pitch_fit,c_m_delta_elev_fit,optimize=True,with_wash=False):
     print(f"{len(data.index)=}")
@@ -88,7 +89,8 @@ def calculate_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_fit):
                     (abs(threlevdata_allaspd.airspeed - aspd)<0.05)
                     ]
                 
-                if len(threlevdata.index) == 0:
+                if len(threlevdata.index) < 4:
+                    # Insufficient data for these conditions
                     # No data for these conditions
                     continue
                 
@@ -119,7 +121,8 @@ def plot_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_thr_fits):
                     (abs(threlevdata_allaspd.airspeed - aspd)<0.05)
                     ]
                 
-                if len(threlevdata.index) == 0:
+                if len(threlevdata.index) < 4:
+                    # Insufficient data for these conditions
                     # No data for these conditions
                     continue
                 
@@ -228,7 +231,7 @@ def plot_C_M_delta_elev_thr_surfaces(data,c_m_pitch_fit,c_m_delta_elev_thr_surfa
     cbar.set_label("Airspeed")
 
 def c_m_manif(elev,thr,aspd,surface_order,*args):
-    return poly_manifold(elev,thr,aspd,2,*args)
+    return poly_manifold(elev,thr,aspd,3,*args)
     order = surface_order + 1
     if len(args) % order != 0:
         raise ValueError(f"length of args must be divisible by 4*(order+1) ({4*(order+1)})")
@@ -244,7 +247,7 @@ def calculate_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit):
     # Calc C_M manifold
     
     def manif_least_sq(params,data,c_ms):
-        c_me = c_m_manif(np.radians(data.elevator),data.throttle,data.airspeed,None,*params)
+        c_me = c_m_manif(np.radians(data.elevator),data.throttle,np.power(data.airspeed, 2),None,*params)
         
         return np.linalg.norm(c_me - c_ms)
 
@@ -267,7 +270,38 @@ def calculate_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit):
     # a0 = [0.0]*len(c0)
     # x0 = list(itertools.chain(*zip(c0,b0,a0)))
     x0 = [0.01]*21
-    res = scipy.optimize.minimize(manif_least_sq,x0,args=(threlevdata,c_m_deltas),method="Powell",options={"maxiter":100000})
+    x0 = np.random.rand(21)
+    x0 = [ 8.67965211e-01,  7.58414615e-01, -2.49386511e-02,  7.40669903e-02,
+        2.81390599e-02, -9.78367055e-05,  5.71112063e-01,  1.52377203e+00,
+       -6.30553136e-02,  1.05841437e-04, -1.93703082e-06,  8.87980160e-01,
+        5.12208245e-01,  2.37075411e+00,  2.13551148e-02,  3.21095466e-03,
+        1.41368871e-03,  5.98830439e-01,  3.03840980e+00, -2.57368865e-01,
+        6.00403792e+00] # From no method
+    x0 = [-1.07046539e+00, -2.04597194e-01,  5.15160151e-04,  3.94509095e+02,
+       -5.48330257e-03,  6.67667273e-06, -3.94122284e+02, -3.80028147e-02,
+        2.62542909e-04, -7.55943372e-07,  3.00450653e-10, -1.79826616e-01,
+        2.14000624e+00, -1.12538282e-01, -3.79540573e-03,  3.25351114e-04,
+        4.16431828e-08,  1.87418785e+00,  6.37906202e-02, -1.87049343e-04,
+        4.69526776e-02] # Seeded with above, Powell
+    x0 = [ -7.47911153e+00,  6.01356994e-01,  1.09021633e-03,  2.26973581e+03,
+       -1.59547852e-02, -1.17412479e-05, -2.26254370e+03,  6.00689733e-02,
+        1.26162352e-04, -2.08403162e-06, -1.15436261e-09, -1.09098203e-01,
+       -1.54288281e+00, -3.02385252e-01,  1.02796554e-02,  1.05477385e-03,
+        1.02999334e-06,  2.28053534e+00,  7.97257028e-02, -1.72483986e-04,
+       -4.05549956e-02]
+    x0 = x0 + (np.random.rand(21) - 0.5) * 0.001
+    res = scipy.optimize.minimize(
+        manif_least_sq,
+        x0,
+        args=(threlevdata,c_m_deltas),
+        # method="Nelder-Mead",
+        # method="Powell",
+        # method="COBYLA",
+        # method="CG",
+        # method="L-BFGS-B",
+        # method="SLSQP",
+        options={"maxiter": 100000}
+    )
 
     return Fit(c_m_manif,[None,*res.x]),res
 
@@ -370,19 +404,45 @@ if __name__ == "__main__":
     _,_,c_m_pitch_fit = get_big3_fits()
     
     c_m_delta_elev_fit = calculate_C_M_delta_elev(data,c_m_pitch_fit)
-    plot_C_M_delta_elev(elevdata,c_m_pitch_fit,c_m_delta_elev_fit)
+    # plot_C_M_delta_elev(elevdata,c_m_pitch_fit,c_m_delta_elev_fit)
     
     pitches = [2.5]
     
     c_m_delta_elev_thr_fits = calculate_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_fit)
-    plot_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_thr_fits)
+    # plot_C_M_delta_elev_thr(data,c_m_pitch_fit,c_m_delta_elev_thr_fits)
 
     c_m_delta_elev_thr_surface_fits = calculate_C_M_delta_elev_thr_surfaces(data,c_m_pitch_fit)
     plot_C_M_delta_elev_thr_surfaces(data,c_m_pitch_fit,c_m_delta_elev_thr_surface_fits)
 
-    c_m_delta_elev_thr_manifold_fit,res = calculate_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit)
-    print(res)
-    plot_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit, c_m_delta_elev_thr_manifold_fit)
+    # c_m_delta_elev_thr_manifold_fit,res = calculate_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit)
+    # print(res)
+    # plot_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit, c_m_delta_elev_thr_manifold_fit)
+    
+    coeffs = [
+            -1.09419902e+00,
+            -2.11376232e-01,
+            2.68838823e-02,
+            -2.19078045e+02,
+            -1.85268630e-01,
+            4.81678617e-03,
+            2.19458992e+02,
+            -4.51607587e-01,
+            2.38686253e-03,
+            -1.87506464e-04,
+            1.22846953e-03,
+            -4.61863302e-01,
+            3.63517580e+00,
+            5.27810084e-01,
+            -1.51973289e-01,
+            4.08504874e-03,
+            -5.98825396e-02,
+            2.59581816e+00,
+            -1.73627947e-01,
+            9.31570574e-01,
+            -4.57208842e+00
+        ]
+    c_m_delta_elev_thr_manifold_fit = Fit(poly_manifold, [3,*coeffs])
+    # plot_C_M_delta_elev_thr_manifold(data, c_m_pitch_fit, c_m_delta_elev_thr_manifold_fit)
 
     plot_fit_analysis(data,c_m_pitch_fit,c_m_delta_elev_thr_fits,c_m_delta_elev_thr_surface_fits,c_m_delta_elev_thr_manifold_fit)
 
