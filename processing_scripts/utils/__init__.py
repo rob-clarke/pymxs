@@ -56,21 +56,23 @@ def augment_with_airspeed(df,airspeed):
     airspeed = [airspeed]*len(df.index)
     df['airspeed'] = airspeed
 
+
+def load_file(dirpath,filename,add_rigpitch=True,has_beta=False):
+    data = pd.read_csv(os.path.join(dirpath,filename),engine='c')
+    if add_rigpitch:
+        if has_beta:
+            rigpitch,rigyaw = get_rig_orient(filename)
+            data = augment_with_rigpitch(data,rigpitch)
+            data = augment_with_rigyaw(data,rigyaw)
+        else:
+            rigpitch = get_rigpitch(filename)
+            data = augment_with_rigpitch(data,rigpitch)
+    return data
+
+
 def load_dir(dirpath,add_rigpitch=True,has_beta=False):
-    def load_file(dirpath,filename):
-        data = pd.read_csv(os.path.join(dirpath,filename),engine='c')
-        if add_rigpitch:
-            if has_beta:
-                rigpitch,rigyaw = get_rig_orient(filename)
-                data = augment_with_rigpitch(data,rigpitch)
-                data = augment_with_rigyaw(data,rigyaw)
-            else:
-                rigpitch = get_rigpitch(filename)
-                data = augment_with_rigpitch(data,rigpitch)
-        return data
-            
     files = os.listdir(dirpath)
-    dfs = map(lambda f: load_file(dirpath,f),files)
+    dfs = map(lambda f: load_file(dirpath,f,add_rigpitch,has_beta),files)
     return pd.concat(dfs)
 
 from . import tares, controls
