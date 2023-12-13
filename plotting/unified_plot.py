@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
     if args.multi_manoeuvre:
         manoeuvres = args.multi_manoeuvre.split(",")
-        formats = ["-k", "--r"]
+        formats = ["-k", "--r", "--g", "--b", "--y", "--k", "-r", "-g", "-b", "-y", "-.k", "-.r", "-.g", "-.b", "-.y", ":k", ":r", ":g", ":b", ":y"]
         pathfig = None
         pathax = None
         tracefig = None
