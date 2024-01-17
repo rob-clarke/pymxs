@@ -228,20 +228,31 @@ class StartNoiseWrapper(gym.Wrapper):
     [_, base_vel, base_att, base_rates] = self.unwrapped.initial_state
     self.base_airspeed = np.hypot(base_vel[0], base_vel[2])
     self.base_gamma = np.arctan2(base_vel[2], base_vel[0])
+    self.base_pitch = get_pitch(*base_att)
+    print(f"{base_att=}")
     self.base_rate = base_rates[1]
 
   def reset(self, *args):
     noise = (np.random.random((4,)) - 0.5) * 2
     [n_airspeed, n_gamma, n_pitch, n_pitchrate] = noise * self.start_noise
-    print(f"{n_gamma=}, {n_airspeed=}")
+    print(f"{n_gamma=}, {n_airspeed=}, {n_pitch=}, {n_pitchrate=}")
+
     print(f"Gamma: {self.base_gamma + n_gamma}")
     u = (self.base_airspeed + n_airspeed) * np.cos(self.base_gamma + n_gamma)
     w = (self.base_airspeed + n_airspeed) * np.sin(self.base_gamma + n_gamma)
     self.unwrapped.initial_state[1] = [u, 0, w]
     print(f"Using initial velocity: [{u}, 0, {w}]")
+    
+    theta = self.base_pitch + n_pitch
+    qy = np.sin(theta / 2.0)
+    qw = np.cos(theta / 2.0)
+    self.unwrapped.initial_state[2] = [0, qy, 0, qw]
+    print(f"Using initial pitch: {theta}")
+
     q = self.base_rate + n_pitchrate
     self.unwrapped.initial_state[3] = [0, q, 0]
     print(f"Using initial pitch rate: {q}")
+
     return self.env.reset(*args)
 
 class StartStateWrapper(gym.Wrapper):
