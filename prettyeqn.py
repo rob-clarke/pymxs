@@ -1,4 +1,11 @@
 import numpy.typing as npt
+import unicodedata
+
+def unicode_len(s):
+    return sum([1 if unicodedata.combining(c) == 0 else 0 for c in s])
+
+def dot(x):
+    return f"{x}\u0307"
 
 class Matrix:
     def __init__(self, content: npt.NDArray):
@@ -37,12 +44,13 @@ class Matrix:
 class SymbolVector:
     def __init__(self, content):
         self.content = content
+        self.content_width = max(map(unicode_len, content))
     
     def get_height(self):
         return len(self.content) + 2
     
     def get_width(self):
-        return 5
+        return self.content_width + 4
     
     def get_line(self, linenum, total_lines):
         centre = total_lines // 2
@@ -61,7 +69,7 @@ class SymbolVector:
             return "\u2514{}\u2518".format(
                 " " * (self.get_width()-2)
             )
-        return "\u2502 {} \u2502".format(
+        return f"\u2502 {{:^{self.content_width}}} \u2502".format(
             self.content[linenum-1]
         )
 
