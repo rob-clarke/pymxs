@@ -45,7 +45,7 @@ def evaluate_model(model, env, output_path=False, transformer=lambda x: x, initi
 if __name__ == "__main__":
 
   parser = argparse.ArgumentParser()
-  # parser.add_argument("run_name")
+  parser.add_argument("run_names", help="Comma separated run names")
 
   output_args = parser.add_argument_group("Output options")
   output_args.add_argument("--no-save", dest="save", action="store_false")
@@ -63,7 +63,8 @@ if __name__ == "__main__":
 
   # runs = ["2023-03-10T15-57-12", "2023-12-13T10-28-02"]
   # runs = ["2023-03-10T16-28-39", "2023-12-13T10-28-02"]
-  runs = ["2023-03-10T15-57-12", "2023-12-08T15-06-19"]
+  # runs = ["2023-03-10T15-57-12", "2024-01-17T12-06-27"]
+  runs = args.run_names.split(",")
 
   run_datas = []
   for run in runs:
@@ -146,6 +147,8 @@ if __name__ == "__main__":
 
       env.unwrapped.reward_state = None
       env.unwrapped.reward_func = transformed_reward_func
+
+      print(f"Start of stage state: {model_transformer(obs)}")
 
       segment_start = simtime
       while not done:
