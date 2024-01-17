@@ -233,9 +233,12 @@ class StartNoiseWrapper(gym.Wrapper):
   def reset(self, *args):
     noise = (np.random.random((4,)) - 0.5) * 2
     [n_airspeed, n_gamma, n_pitch, n_pitchrate] = noise * self.start_noise
+    print(f"{n_gamma=}, {n_airspeed=}")
+    print(f"Gamma: {self.base_gamma + n_gamma}")
     u = (self.base_airspeed + n_airspeed) * np.cos(self.base_gamma + n_gamma)
     w = (self.base_airspeed + n_airspeed) * np.sin(self.base_gamma + n_gamma)
     self.unwrapped.initial_state[1] = [u, 0, w]
+    print(f"Using initial velocity: [{u}, 0, {w}]")
     # self.unwrapped.initial_state[2] = []
     # self.unwrapped.initial_state[3] = []
     # print(u,w)
