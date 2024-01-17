@@ -32,6 +32,7 @@ if __name__ == "__main__":
   output_args.add_argument("-d", "--directory", default="./runs", help="Destination for saving runs")
   output_args.add_argument("-o", "--output", action="store_true", help="Generate CSV for final output")
   output_args.add_argument("--plot", action="store_true", help="Show plots at end of training. (Will act as if -o specified)")
+  output_args.add_argument("--no-plane", action="store_true", help="Don't plot the plane outline")
   output_args.add_argument("--save-plots", action="store_true", help="Save generated plots. (Will act as if --plot and -o are specified)")
 
   args = parser.parse_args()
@@ -132,6 +133,8 @@ if __name__ == "__main__":
       "-d", args.directory,
       args.run_name
     ]
+    if args.no_plane:
+      plot_command.extend(["--no-plane"])
     if args.save_plots:
       plot_command.extend(["--save", "--no-show"])
     if args.samples:

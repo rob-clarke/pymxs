@@ -93,7 +93,7 @@ def plot_vehicle(ax, data, data_eul):
         draw_vehicle(ax, data.x[i], -data.z[i], np.radians(data_eul.pitch[i]), data.elevator[i])
         last_pos = [data.x[i], data.z[i]]
 
-def plot_data(data, data_eul, fmt="", pathax=None, traceaxs=None):
+def plot_data(data, data_eul, fmt="", pathax=None, traceaxs=None, plot_plane=True):
     pathfig = None
     if pathax is None:
         pathfig = plt.figure()
@@ -105,7 +105,8 @@ def plot_data(data, data_eul, fmt="", pathax=None, traceaxs=None):
         plt.axis('equal')
 
     pathax.plot(data.x, -data.z, fmt)
-    plot_vehicle(pathax, data, data_eul)
+    if plot_plane:
+        plot_vehicle(pathax, data, data_eul)
 
     tracefig = None
     if traceaxs is None:
@@ -146,6 +147,7 @@ if __name__ == "__main__":
     parser.add_argument("--save", action="store_true", help="Save the output plots")
     parser.add_argument("--multi-manoeuvre", help="Manoeuvre names for multi-manoeuvre run")
     parser.add_argument("--no-show", action="store_true", help="Don't show plots, run in batch mode")
+    parser.add_argument("--no-plane", action="store_true", help="Don't plot the plane outline")
 
     args = parser.parse_args()
 
@@ -164,7 +166,7 @@ if __name__ == "__main__":
                 os.path.join(run_dir, f"output.{manoeuvre}.csv")
             )
             data_eul = get_eulerized(data)
-            pathax, tracesaxs, newpathfig, newtracefig = plot_data(data, data_eul, formats[i], pathax, tracesaxs)
+            pathax, tracesaxs, newpathfig, newtracefig = plot_data(data, data_eul, formats[i], pathax, tracesaxs, plot_plane=not args.no_plane)
             if newpathfig and newtracefig:
                 pathfig = newpathfig
                 tracefig = newtracefig
