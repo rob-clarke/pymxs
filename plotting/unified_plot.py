@@ -204,7 +204,12 @@ if __name__ == "__main__":
     plt.minorticks_on()
     plt.grid(True, 'both')
 
-    plt.plot(data.x, -data.z)
+    if 'run_idx' in data.columns:
+        for run_idx in set(data.run_idx):
+            run_points = data.run_idx == run_idx
+            plt.plot(data.x[run_points], -data.z[run_points])
+    else:
+        plt.plot(data.x, -data.z)
     plt.xlabel('x-position')
     plt.ylabel('z-position (inverted)')
     plt.axis('equal')
@@ -244,7 +249,12 @@ if __name__ == "__main__":
     }
 
     def plot_against_time(axis, ydata, label):
-        ax[axis].plot(data.time, ydata, color='k')
+        if 'run_idx' in data.columns:
+            for run_idx in set(data.run_idx):
+                run_points = data.run_idx == run_idx
+                ax[axis].plot(data.time[run_points], ydata[run_points])
+        else:
+            ax[axis].plot(data.time, ydata, color='k')
         ax[axis].set_ylabel(label, **ylabel_common_args)
         ax[axis].minorticks_on()
         ax[axis].grid(True, "both")
