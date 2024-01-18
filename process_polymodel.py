@@ -48,6 +48,7 @@ if __name__ == "__main__":
   parser.add_argument("run_names", help="Comma separated run names")
   parser.add_argument("-d", "--directory", default="./runs", help="Destination for saving runs")
   parser.add_argument("--segment-limits", help="Override time limits for segments (commad separated)")
+  parser.add_argument("-x", "--show-commands", action="store_true", help="Print the command line used for any subprocess calls")
 
   output_args = parser.add_argument_group("Output options")
   output_args.add_argument("--no-save", dest="save", action="store_false")
@@ -200,4 +201,6 @@ if __name__ == "__main__":
     if args.save_plots:
       plot_command.append("--save")
 
+    if args.show_commands:
+      print(" ".join(plot_command))
     subprocess.call(plot_command)
