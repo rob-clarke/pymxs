@@ -46,10 +46,11 @@ if __name__ == "__main__":
 
   parser = argparse.ArgumentParser()
   parser.add_argument("run_names", help="Comma separated run names")
+  parser.add_argument("-d", "--directory", default="./runs", help="Destination for saving runs")
+  parser.add_argument("--segment-limits", help="Override time limits for segments (commad separated)")
 
   output_args = parser.add_argument_group("Output options")
   output_args.add_argument("--no-save", dest="save", action="store_false")
-  output_args.add_argument("-d", "--directory", default="./runs", help="Destination for saving runs")
   output_args.add_argument("-o", "--output", action="store_true", help="Generate CSV for final output")
   output_args.add_argument("--plot", action="store_true", help="Show plots at end of training. (Will act as if -o specified)")
   output_args.add_argument("--save-plots", action="store_true", help="Save generated plots. (Will act as if --plot and -o are specified)")
@@ -65,6 +66,19 @@ if __name__ == "__main__":
   # runs = ["2023-03-10T16-28-39", "2023-12-13T10-28-02"]
   # runs = ["2023-03-10T15-57-12", "2024-01-17T12-06-27"]
   runs = args.run_names.split(",")
+  
+  def float_or_none(strval):
+    try:
+      return float(strval)
+    except ValueError:
+      return None
+  
+  if args.segment_limits is not None:
+    segment_limits = list(map(float_or_none, args.segment_limits.split(',')))
+    if len(segment_limits) != len(runs):
+      raise ValueError(f"Different number of runs ({len(runs)}) to segment limits ({len(segment_limits)})")
+  else:
+    segment_limits = [None]*len(runs)
 
   run_datas = []
   for run in runs:
@@ -128,16 +142,24 @@ if __name__ == "__main__":
 
     for (run_idx, (run_args, model, reward_func)) in enumerate(run_datas):
       print(f"Processing: {run_args.run_name}")
+      
+      if segment_limits[run_idx] is not None:
+        segment_limit = segment_limits[run_idx]
+      else:
+        segment_limit = (run_args.episode_length / 100)
+      
       def model_transformer(obs):
-        obs[0] = obs[0] - origin[0]
-        obs[1] = obs[1] - origin[1]
-        return obs
+        obs_t = copy.copy(obs)
+        obs_t[0] = obs[0] - origin[0]
+        obs_t[1] = obs[1] - origin[1]
+        return obs_t
       
       def reward_transformer(obs):
         # Reward sees full state so need to modify [2] for z
-        obs[0] = obs[0] - origin[0]
-        obs[2] = obs[2] - origin[1]
-        return obs
+        obs_t = copy.copy(obs)
+        obs_t[0] = obs[0] - origin[0]
+        obs_t[2] = obs[2] - origin[1]
+        return obs_t
 
       # Create transfomed reward func and assign to env
       def transformed_reward_func(observation, state):
@@ -152,13 +174,15 @@ if __name__ == "__main__":
 
       segment_start = simtime
       while not done:
-        action, _state = model.predict(model_transformer(obs), deterministic=True)
+        obs_t = model_transformer(obs)
+        # print("obs_t: [ {} ]".format(", ".join([ "{:7.4f}".format(xi) for xi in obs_t ])))
+        action, _state = model.predict(obs_t, deterministic=True)
         obs, reward, done, info = env.step(action)
         if outfile:
           outfile.write(f"{simtime},{env.render('ansi')[1:-1]},{reward},{run_idx}\n")
         simtime += env.dT
         
-        if simtime - segment_start > 3:
+        if run_args.manoeuvre == "hoversus" and simtime - segment_start > segment_limit:
           done = True
       
       done = False
