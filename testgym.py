@@ -157,7 +157,7 @@ def create_reward_func(args):
 
     is_flight = within(q, -0.01, 0.01) \
       and within(pitch, -0.05, 0.05) \
-      and within(u, 13, 17) \
+      and within(u, 10, 15) \
       and within(w, -0.1, 0.1)
 
     if is_flight:
