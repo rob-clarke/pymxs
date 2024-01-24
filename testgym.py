@@ -153,7 +153,7 @@ def create_reward_func(args):
     if x > x_limit or z > 5:
       pitch_error = abs(pitch)
       vel_error = abs(u-12.5)
-      return (1-pitch_weight*pitch_error)*(1-vel_error), True, None
+      return (1-pitch_weight*pitch_error)+(1-vel_error), True, None
 
     is_flight = within(q, -0.01, 0.01) \
       and within(pitch, -0.05, 0.05) \
