@@ -43,10 +43,10 @@ def c_l_curve(alpha,cl_0,cl_alpha,pstall,nstall):
 
 def calculate_C_lift(neutral_data):
     # Calculate C_lift
-
+    linear_data = (neutral_data.pitch < 8) & (neutral_data.pitch > -8) # just do the linear fit within the linear region.
     c_lifts = neutral_data.lift / utils.qS(neutral_data.airspeed)
 
-    popt,pcov = scipy.optimize.curve_fit(linear,np.radians(neutral_data.pitch),c_lifts)
+    popt,pcov = scipy.optimize.curve_fit(linear,np.radians(neutral_data.loc[linear_data].pitch),c_lifts[linear_data])
     C_lift = {
         "zero": float(popt[1]),
         "alpha": float(popt[0])
@@ -212,7 +212,8 @@ def get_big3_fits():
 if __name__ == "__main__":
     import sys
     data = load_data()
-
+     # It makes sense to add a pitch correction here to account for flow angularity / wonky setup
+    data.pitch = data.pitch + 1.68
     neutral_data = utils.select_neutral(data)
 
     c_lifts,C_lift,C_lift_complex = calculate_C_lift(neutral_data)
